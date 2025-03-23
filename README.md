@@ -1,2 +1,2 @@
-# lock_free_queue
-A lock-free queue
+# spsc_queue
+An implementation of a lock-free SPSC queue in modern 
