@@ -1,2 +1,2 @@
 # spsc_queue
-An implementation of a lock-free SPSC queue in modern 
+A bounded single-producer and single-consumer lock-free queue in modern C++.
