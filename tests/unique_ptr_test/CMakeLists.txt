@@ -28,3 +28,7 @@ target_link_libraries(unique_ptr_test gtest gtest_main)
 
 # Specify include directories for the target
 target_include_directories(unique_ptr_test PUBLIC ${INCLUDE_DIRECTORIES})
+
+# Discover and register Google Test cases
+include(GoogleTest)
+gtest_discover_tests(unique_ptr_test)

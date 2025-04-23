@@ -20,5 +20,11 @@ cmake ..
 Build the project by issuing:
 
 ```shell
-CMAKE --build .
+cmake --build .
+```
+
+Run all tests by issuing :
+
+```shell
+ctest
 ```

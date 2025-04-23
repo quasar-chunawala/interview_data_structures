@@ -1,6 +1,7 @@
 #include<format>
 #include<concepts>
 
+// Ref: C++ Memory Management by Patrice Roy
 namespace dev{
 
     /* Default deleter - single object version */
