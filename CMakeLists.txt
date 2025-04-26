@@ -12,6 +12,7 @@ enable_testing()
 
 # Add subdirectories for test projects
 add_subdirectory(tests/unique_ptr_test)
+add_subdirectory(tests/shared_ptr_test)
 
 # Add other test directories here if needed
 # Example:
