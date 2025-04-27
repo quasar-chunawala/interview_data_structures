@@ -36,22 +36,26 @@ TEST(SharedPtrTest, RefCountingTest){
 }
 
 TEST(SharedPtrTest, MultithreadedConstructionAndDestructionTest){
+    using namespace std::chrono_literals;
     dev::shared_ptr ptr = new int(42);
     std::atomic<bool> go{false};
     EXPECT_EQ(ptr.use_count() == 1, true);
 
     std::thread t1([&]{
         dev::shared_ptr<int> ptr1 = ptr;
-        while(!go);
+        while(!go.load());
         std::cout << "\nRef Count = " << ptr.use_count();
+        std::this_thread::sleep_for(1s);
     });
 
     std::thread t2([&]{
         dev::shared_ptr<int> ptr2 = ptr;
-        while(!go);
+        while(!go.load());
         std::cout << "\nRef Count = " << ptr.use_count();
+        std::this_thread::sleep_for(1s);
     });
 
+    std::this_thread::sleep_for(1s);
     go.store(true);
     t1.join();
     t2.join();

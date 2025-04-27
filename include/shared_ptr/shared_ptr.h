@@ -13,7 +13,6 @@ namespace dev{
         shared_ptr(T* ptr) 
         : m_raw_underlying_ptr{ptr}
         {
-            std::cout << "\n--- shared_ptr(T* ) constructor invoked ---";
             try{
                 m_ref_count_ptr = new std::atomic<unsigned long long>(1LL);
             }catch(...){
@@ -27,7 +26,6 @@ namespace dev{
         : m_raw_underlying_ptr{other.m_raw_underlying_ptr}
         , m_ref_count_ptr{other.m_ref_count_ptr}
         {
-            std::cout << "\n--- shared_ptr(const shared_ptr& ) constructor invoked ---";
             if(m_ref_count_ptr)
                 ++(*m_ref_count_ptr);   //Atomic pre-increment
         }
@@ -36,9 +34,7 @@ namespace dev{
         shared_ptr(shared_ptr&& other)
         : m_raw_underlying_ptr{ std::exchange(other.m_raw_underlying_ptr, nullptr)}
         , m_ref_count_ptr{ std::exchange(other.m_ref_count_ptr, nullptr)}
-        {
-            std::cout << "\n--- shared_ptr(shared_ptr&& ) constructor invoked ---";
-        }
+        {}
 
         /* Swap : Swap two shared_ptr objects member by member */
         void swap(shared_ptr& other){
@@ -54,7 +50,6 @@ namespace dev{
         /* Copy assignment operator : Release the current held resource
            and share the ownership of the resource specified by args */
         shared_ptr& operator=(const shared_ptr& other){
-            std::cout << "\n--- shared_ptr& operator=(const shared_ptr& ) invoked ---";
             shared_ptr{ other }.swap(*this);
             return *this;
         }
@@ -62,7 +57,6 @@ namespace dev{
         /* Move assignment : Release the currently held resource
            and transfer the ownership of resource specified in args */
         shared_ptr& operator=(shared_ptr&& other){
-            std::cout << "\n--- shared_ptr& operator=(shared_ptr&& ) invoked ---";
             shared_ptr{ std::move(other) }.swap(*this);
             return *this;
         }
