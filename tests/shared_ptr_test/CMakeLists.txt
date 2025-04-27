@@ -21,6 +21,12 @@ set(SOURCE_FILES
     shared_ptr_test.cpp
 )
 
+# Set output directory for all binaries
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}) # For static libraries
+
+
 add_executable(shared_ptr_test ${SOURCE_FILES})
 
 # Link Google Test libraries to the target
