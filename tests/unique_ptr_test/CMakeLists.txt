@@ -4,8 +4,8 @@ cmake_minimum_required(VERSION 3.25)
 project(unique_ptr_test)
 
 # Set the C++ language standard
-set(CMAKE_CXX_STANDARD 26)
-set(CMAKE_CXX_STANDARD_REQUIRED 26)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED 23)
 
 # Manually specify the C++26 flag if necessary
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

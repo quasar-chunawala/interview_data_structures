@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.25)
 project(vector_test)
 
 # set the C++ language standard
-set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 
 # Manually specify the C++26 flag if necessary
