@@ -7,6 +7,11 @@ project(shared_ptr_test)
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED 26)
 
+# Manually specify the C++26 flag if necessary
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options(-std=c++2b)
+endif()
+
 # Add googletest as a subproject
 # add_subdirectory(../../ext/googletest)
 
