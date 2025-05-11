@@ -42,6 +42,9 @@ TEST(UniquePtrTest, ReleaseTest){
     EXPECT_EQ(ptr == nullptr, true);
     EXPECT_EQ(rawPtr != nullptr, true);
     EXPECT_EQ(*rawPtr == 3.14, true);
+
+    delete rawPtr;
+    rawPtr = nullptr;
 }
 
 /* reset() :  replaces the managed object */
@@ -116,7 +119,10 @@ TEST(UniquePtrTest, PointerToArrayOfTConstructionAndAccess){
         EXPECT_EQ(p !=nullptr, true);
         EXPECT_EQ(*p == 1, true);
         EXPECT_EQ(p[2] == 3, true);
-        p.release();
+        int* raw_ptr = p.release();
         EXPECT_EQ(p ==nullptr, true);
+
+        delete[] raw_ptr;
+        raw_ptr = nullptr;
     }
 }

@@ -6,6 +6,8 @@
 #include<concepts>
 
 namespace dev{
+
+
     template<typename T>
     class forward_list{
         public:
@@ -15,6 +17,36 @@ namespace dev{
         using const_pointer = const T*;
         using reference = T&;
         using const_reference = const T&;
+        using difference_type = std::ptrdiff_t;
+        
+        template<typename U>
+        class Iterator{
+            public:
+            using value_type = forward_list::value_type;
+            using pointer = forward_list::pointer;
+            using reference = forward_list::reference;
+            using difference_type = forward_list::difference_type;
+            friend class forward_list<T>;
+
+            private:
+            ListNode* m_current_node_ptr;
+
+            public:
+            Iterator() = default;
+            Iterator(ListNode* ptr)
+            : m_current_node_ptr{ptr}
+            {}
+
+
+        };
+
+        size_type size() const{
+            return m_size;
+        }
+
+        bool empty() const{
+            return (!m_head);
+        }
 
         private:
         struct ListNode{
