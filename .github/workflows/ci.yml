@@ -19,22 +19,32 @@ jobs:
 
     # Step 2: Install dependencies
     - name: Install dependencies
-      run: sudo apt-get update && sudo apt-get install -y cmake g++ lcov
+      run: sudo apt-get update && sudo apt-get install -y cmake lcov build-essential
 
-    # Step 3: Verify compiler version
+    # Step 3: Install GCC 15.1
+    - name: Install GCC 15.1
+      run: |
+        sudo apt-get install -y software-properties-common
+        sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+        sudo apt-get update
+        sudo apt-get install -y gcc-15 g++-15
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-15 100
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-15 100      
+
+    # Step 4: Verify compiler version
     - name: Check GCC version
       run: |
         g++ --version
         gcc --version
 
-    # Step 4: Configure the project with CMake
+    # Step 5: Configure the project with CMake
     - name: Configure with CMake
       run: cmake -S . -B build -DCMAKE_CXX_STANDARD=26 -DCMAKE_CXX_STANDARD_REQUIRED=ON
 
-    # Step 5: Build the project
+    # Step 6: Build the project
     - name: Build the project
       run: cmake --build build
 
-    # Step 6: Run tests
+    # Step 7: Run tests
     - name: Run tests
       run: ctest --test-dir build --output-on-failure
