@@ -17,18 +17,24 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Step 2: Set up CMake
+    # Step 2: Install dependencies
     - name: Install dependencies
       run: sudo apt-get update && sudo apt-get install -y cmake g++ lcov
 
-    # Step 3: Configure the project with CMake
-    - name: Configure with CMake
-      run: cmake -S . -B build 
+    # Step 3: Verify compiler version
+    - name: Check GCC version
+      run: |
+        g++ --version
+        gcc --version
 
-    # Step 4: Build the project
+    # Step 4: Configure the project with CMake
+    - name: Configure with CMake
+      run: cmake -S . -B build -DCMAKE_CXX_STANDARD=26 -DCMAKE_CXX_STANDARD_REQUIRED=ON
+
+    # Step 5: Build the project
     - name: Build the project
       run: cmake --build build
 
-    # Step 5: Run tests
+    # Step 6: Run tests
     - name: Run tests
       run: ctest --test-dir build --output-on-failure
