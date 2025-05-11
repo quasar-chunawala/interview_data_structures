@@ -1,16 +1,8 @@
-name: CMake Build and Test
-
-on:
-  push:
-    branches:
-      - main  # Run the workflow on pushes to the 'main' branch
-  pull_request:
-    branches:
-      - main  # Run the workflow on pull requests to the 'main' branch
-
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    container:
+      image: gcc:15.1.0  # Official GCC Docker image with GCC 15.1 preinstalled
 
     steps:
     # Step 1: Checkout the code
@@ -19,36 +11,22 @@ jobs:
 
     # Step 2: Install dependencies
     - name: Install dependencies
-      run: sudo apt-get update && sudo apt-get install -y cmake lcov build-essential
+      run: apt-get update && apt-get install -y cmake lcov
 
-    # Step 3: Download and Install Prebuilt GCC 15.1
-    - name: Download and Install GCC 15.1
-      run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential wget libgmp-dev libmpfr-dev libmpc-dev flex bison
-          wget http://ftp.gnu.org/gnu/gcc/gcc-15.1.0/gcc-15.1.0.tar.gz
-          tar -xvzf gcc-15.1.0.tar.gz
-          cd gcc-15.1.0
-          ./contrib/download_prerequisites
-          mkdir build && cd build
-          ../configure --enable-languages=c,c++ --disable-multilib
-          make -j$(nproc)
-          sudo make install
-
-    # Step 4: Verify compiler version
+    # Step 3: Verify GCC version
     - name: Check GCC version
       run: |
-        g++ --version
         gcc --version
+        g++ --version
 
-    # Step 5: Configure the project with CMake
+    # Step 4: Configure the project with CMake
     - name: Configure with CMake
       run: cmake -S . -B build -DCMAKE_CXX_STANDARD=26 -DCMAKE_CXX_STANDARD_REQUIRED=ON
 
-    # Step 6: Build the project
+    # Step 5: Build the project
     - name: Build the project
       run: cmake --build build
 
-    # Step 7: Run tests
+    # Step 6: Run tests
     - name: Run tests
       run: ctest --test-dir build --output-on-failure
