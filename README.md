@@ -82,3 +82,7 @@ lcov --capture --directory . --output-file coverage.info
 lcov --remove coverage.info '/usr/*' '*/tests/*' --output-file coverage.filtered.info
 genhtml coverage.filtered.info --output-directory coverage_report
 ```
+
+## Intellisense configuration
+
+If you use VSCode as your IDE and there are issues with the Intellisense configuration, go to command palette `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (macOS) and search for and select Intellisense configuration and ensure that you pick the right one.
