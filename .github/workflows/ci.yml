@@ -1,3 +1,13 @@
+name: CMake Build and Test
+
+on:
+  push:
+    branches:
+      - main  # Run the workflow on pushes to the 'main' branch
+  pull_request:
+    branches:
+      - main  # Run the workflow on pull requests to the 'main' branch
+      
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
