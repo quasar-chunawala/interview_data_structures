@@ -26,7 +26,6 @@ jobs:
     # Step 3: Download GoogleTest
     - name: Download GoogleTest
       run: |
-        mkdir -p ext
         git clone --depth=1 -b release-1.12.1 https://github.com/google/googletest.git ./ext
 
     # Step 4: Verify GCC version
