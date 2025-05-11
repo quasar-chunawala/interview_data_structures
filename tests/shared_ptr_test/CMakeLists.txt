@@ -35,6 +35,18 @@ target_link_libraries(shared_ptr_test gtest gtest_main)
 # Specify include directories for the target
 target_include_directories(shared_ptr_test PUBLIC ${INCLUDE_DIRECTORIES})
 
+# Add AddressSanitizer and gcov flags conditionally
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "Building the shared_ptr_test target in Debug mode...")
+    if(MSVC)
+        target_compile_options(shared_ptr_test PRIVATE /fsanitize=address /Zi /MD)
+        target_link_options(shared_ptr_test PRIVATE /fsanitize=address)
+    else()
+        target_compile_options(shared_ptr_test PRIVATE --coverage -fsanitize=address -g)
+        target_link_options(shared_ptr_test PRIVATE --coverage -fsanitize=address)
+    endif()
+endif()
+
 # Discover and register Google Test cases
 include(GoogleTest)
 gtest_discover_tests(shared_ptr_test)

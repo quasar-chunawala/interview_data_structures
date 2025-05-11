@@ -25,8 +25,9 @@ target_include_directories(vector_test PUBLIC ${INCLUDE_DIRECTORIES})
 
 target_link_libraries(vector_test gtest gtest_main)
 
-# Add AddressSanitizer flags conditionally
+# Add AddressSanitizer and gcov flags conditionally
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "Building the vector_test target in Debug mode...")
     if(MSVC)
         target_compile_options(vector_test PRIVATE /fsanitize=address /Zi /MD)
         target_link_options(vector_test PRIVATE /fsanitize=address)

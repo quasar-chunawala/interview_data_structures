@@ -47,3 +47,6 @@ launch.json
 tasks.json
 
 [Bb][Uu][Ii][Ll][Dd]/
+
+# Folders
+coverage_report
