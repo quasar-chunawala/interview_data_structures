@@ -23,20 +23,26 @@ jobs:
     - name: Install dependencies
       run: apt-get update && apt-get install -y cmake lcov
 
-    # Step 3: Verify GCC version
+    # Step 3: Download GoogleTest
+    - name: Download GoogleTest
+      run: |
+        mkdir -p ext
+        git clone --depth=1 -b release-1.12.1 https://github.com/google/googletest.git ./ext
+
+    # Step 4: Verify GCC version
     - name: Check GCC version
       run: |
         gcc --version
         g++ --version
 
-    # Step 4: Configure the project with CMake
+    # Step 5: Configure the project with CMake
     - name: Configure with CMake
       run: cmake -S . -B build -DCMAKE_CXX_STANDARD=23 -DCMAKE_CXX_STANDARD_REQUIRED=ON
 
-    # Step 5: Build the project
+    # Step 6: Build the project
     - name: Build the project
       run: cmake --build build
 
-    # Step 6: Run tests
+    # Step 7: Run tests
     - name: Run tests
       run: ctest --test-dir build --output-on-failure
