@@ -22,10 +22,10 @@ jobs:
     # Step 2: Install dependencies
     - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y lcov git
+        apt-get update
+        apt-get install -y lcov git
         wget https://github.com/Kitware/CMake/releases/download/v3.27.0/cmake-3.27.0-linux-x86_64.sh
-        sudo bash cmake-3.27.0-linux-x86_64.sh --skip-license --prefix=/usr/local
+        bash cmake-3.27.0-linux-x86_64.sh --skip-license --prefix=/usr/local
 
     # Step 3: Configure, build and run tests
     - name: Configure, build and run tests
