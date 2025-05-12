@@ -11,12 +11,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 enable_testing()
 
 # Add GoogleTest to the project
-# add_subdirectory(ext/googletest)
+add_subdirectory(ext/googletest)
 
 # Global include directories for all test projects
 include_directories(
     ${gtest_SOURCE_DIR}/include
-    #${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include
 )
 
 # Add subdirectories for test projects
