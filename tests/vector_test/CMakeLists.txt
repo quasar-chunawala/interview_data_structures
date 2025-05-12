@@ -6,18 +6,13 @@ project(vector_test)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 
-# Manually specify the C++26 flag if necessary
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    add_compile_options(-std=c++2b)
-endif()
-
 set(SOURCES 
     ./vector_test.cpp
 )
 
 set(INCLUDE_DIRECTORIES
     ../../include/vector/
-    ../../ext/googletest/googletest/include/
+    ${gtest_SOURCE_DIR}/include
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})

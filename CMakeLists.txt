@@ -10,6 +10,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Enable testing
 enable_testing()
 
+# Add GoogleTest to the project
+add_subdirectory(ext/googletest)
+
 # Add subdirectories for test projects
 add_subdirectory(tests/unique_ptr_test)
 add_subdirectory(tests/shared_ptr_test)
