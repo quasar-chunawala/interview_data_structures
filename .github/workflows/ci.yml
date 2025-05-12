@@ -37,12 +37,14 @@ jobs:
 
     # Step 5: Configure the project with CMake
     - name: Configure with CMake
-      run: cmake -S . -B build -DCMAKE_CXX_STANDARD=23 -DCMAKE_CXX_STANDARD_REQUIRED=ON
+      run: |
+        cd ./build
+        cmake ..
 
     # Step 6: Build the project
     - name: Build the project
-      run: cmake --build build
+      run: cmake --build .
 
     # Step 7: Run tests
     - name: Run tests
-      run: ctest --test-dir build --output-on-failure
+      run: ctest
