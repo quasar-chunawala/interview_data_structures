@@ -35,17 +35,11 @@ jobs:
         gcc --version
         g++ --version
 
-    # Step 5: Configure the project with CMake
-    - name: Configure with CMake
+    # Step 5: Configure, build the project and run tests with CMake
+    - name: Configure and build the project with CMake
       run: |
         mkdir -p build
         cd ./build
         cmake ..
-
-    # Step 6: Build the project
-    - name: Build the project
-      run: cmake --build .
-
-    # Step 7: Run tests
-    - name: Run tests
-      run: ctest
+        cmake --build .
+        ctest
