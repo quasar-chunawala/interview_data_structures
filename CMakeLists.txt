@@ -10,6 +10,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Enable testing
 enable_testing()
 
+if(TARGET gtest)
+  set_target_properties(gtest PROPERTIES VERSION ${GOOGLETEST_VERSION})
+else()
+  message(FATAL_ERROR "Target 'gtest' does not exist.")
+endif()
+
+if(TARGET gtest_main)
+  set_target_properties(gtest_main PROPERTIES VERSION ${GOOGLETEST_VERSION})
+else()
+  message(FATAL_ERROR "Target 'gtest_main' does not exist.")
+endif()
+
 # Add GoogleTest to the project
 add_subdirectory(ext/googletest)
 
