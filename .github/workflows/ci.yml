@@ -38,6 +38,7 @@ jobs:
     # Step 5: Configure the project with CMake
     - name: Configure with CMake
       run: |
+        mkdir -p build
         cd ./build
         cmake ..
 
