@@ -260,6 +260,7 @@ namespace dev{
             auto q = p->next;
             pos->next = q;
             delete p;
+            --m_size;
             return q;
         }
         
@@ -280,6 +281,7 @@ namespace dev{
                 auto p = m_head;
                 m_head = m_head->next;
                 delete p;
+                --m_size;
             }
         }
         // resize() - Resizes the container to contain count elements
@@ -289,11 +291,44 @@ namespace dev{
         // - if the current size is less than count, then additional default-inserted
         //   elements/copies of value are appended.
         void resize(size_type count){
-            
+            if(count == m_size)
+                return;
+
+            if(count < m_size)
+            {
+                if(count == 0)
+                {
+                    clear();
+                    return;
+                }
+
+                int running_count{0};
+                for(auto p{m_head};p!=nullptr;)
+                {
+                    auto q = p->next;
+                    if(running_count == count){
+                        delete p;
+                    }
+                    ++running_count;
+                    p = q;
+                }
+            }
+
+            if(count > m_size){
+                if(empty())
+                    push_front(T());
+
+                auto p{m_head};
+                int size{m_size};
+                
+                for(auto running_count{1};running_count <= count; ++running_count)
+                {
+                    if(running_count > size)
+                        insert_after(p,T{});
+                    p = p->next;
+                }
+            }
         }
 
-        void resize(size_type, reference value){
-
-        }
     };
 }
