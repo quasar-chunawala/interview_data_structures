@@ -6,8 +6,6 @@
 #include<concepts>
 
 namespace dev{
-
-
     template<typename T>
     class forward_list{
         public:
@@ -18,6 +16,25 @@ namespace dev{
         using reference = T&;
         using const_reference = const T&;
         using difference_type = std::ptrdiff_t;
+
+        private:
+        struct ListNode{
+            value_type m_value;
+            ListNode* next{nullptr};
+            
+            ListNode(const_reference value)
+            : m_value{value}
+            {}
+
+            ListNode(T&& value)
+            : m_value{std::move(value)}
+            {}
+        };
+
+        ListNode* m_head{nullptr};
+        size_type m_size{0};
+        
+        public:
         
         template<typename U>
         class Iterator{
@@ -68,13 +85,16 @@ namespace dev{
             }
 
             U* operator->(){
-                return m_current_node_ptr->value;
+                return m_current_node_ptr;
             }
 
-            const U* operator() const{
-                return m_current_node_ptr->value;
+            const U* operator->() const{
+                return m_current_node_ptr;
             }
         };
+
+        using iterator = Iterator<T>;
+        using const_iterator = Iterator<const T>;
 
         size_type size() const{
             return m_size;
@@ -101,7 +121,7 @@ namespace dev{
         }
 
         const_iterator end() const{
-            return iterator(nullptr);
+            return const_iterator(nullptr);
         }
 
         const_iterator cend() const{
@@ -121,27 +141,6 @@ namespace dev{
         ~forward_list(){
             clear();
         }
-
-        private:
-        struct ListNode{
-            value_type m_value;
-            ListNode* next{nullptr};
-            
-            ListNode(const_reference value)
-            : m_value{value}
-            {}
-
-            ListNode(T&& value)
-            : m_value{std::move(value)}
-            {}
-        };
-
-        ListNode* m_head{nullptr};
-        size_type m_size{0};
-
-        public:
-        using iterator = Iterator<T>;
-        using const_iterator = Iterator<const T>;
 
         /* Constructors */
         forward_list() = default;
@@ -196,7 +195,105 @@ namespace dev{
         }
 
         forward_list& operator=(forward_list&& other){
+            forward_list(std::move(other)).swap(*this);
+        }
+
+        iterator before_begin() noexcept{
+            return (m_head - 1);
+        }
+
+        const_iterator cbefore_begin() noexcept{
+            return (m_head - 1);
+        }
+
+        /* Modifiers */
+
+        // insert_after - Inserts elements after the specified position
+        // in the container. No iterators or references are invalidated.
+        // If pos is not in the range [before_begin(), end()) then
+        // the behavior is UB.
+        private:
+        void insert_after_helper(auto pos, ListNode* newNode){
+            if(std::next(pos) == begin())
+            {
+                newNode->next = m_head;
+                m_head = newNode;
+            }
+            else{
+                newNode->next = pos->next;
+            }
+            pos->next = newNode;
+            ++m_size;
+        }
+
+        public:
+        iterator insert_after(const_iterator pos, const T& value){
+            ListNode* node = new ListNode(value);
+            insert_after_helper(pos, node);
+            return node;
+        }
+
+        iterator insert_after(const_iterator pos, T&& value){
+            ListNode* node = new ListNode(std::move(value));
+            insert_after_helper(pos, node);
+            return node;
+        }
+
+        // emplace_after - Inserts a new element into a position after the 
+        // specified position in the container. The element is 
+        // constructed in-place.
+        template<typename... Args>
+        iterator emplace_after(const_iterator pos,Args&&... args){
+            ListNode* node = new ListNode(T(std::forward<Args>(args)...));
+            insert_after_helper(pos, node);
+            return node;
+        }
+
+        // erase_after - removes the element following pos
+        // It returns iterator to the element following pos
+        // or end(), if no such element exists
+        iterator erase_after(const_iterator pos){
+            if(pos == end() || std::next(pos) == end())
+                return end();
+
+            auto p = pos->next;
+            auto q = p->next;
+            pos->next = q;
+            delete p;
+            return q;
+        }
+        
+        template<typename U>
+        iterator push_front(U&& value){
+            return insert_after(before_begin(),std::forward<U>(value));
+        }
+
+        template<typename... Args>
+        iterator emplace_front(Args&&... args){
+            return emplace_after(before_begin(),std::forward<Args>(args)...);
+        }
+
+        // pop_front - Removes the first element in the container
+        void pop_front(){
+            if(m_head)
+            {
+                auto p = m_head;
+                m_head = m_head->next;
+                delete p;
+            }
+        }
+        // resize() - Resizes the container to contain count elements
+        // - if the count is equal to the current size, does nothing.
+        // - if the current size > count, then the container is reduced to its
+        //   first count elements.
+        // - if the current size is less than count, then additional default-inserted
+        //   elements/copies of value are appended.
+        void resize(size_type count){
             
+        }
+
+        void resize(size_type, reference value){
+
         }
     };
 }

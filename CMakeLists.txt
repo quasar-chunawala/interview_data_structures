@@ -23,3 +23,4 @@ include_directories(
 add_subdirectory(tests/unique_ptr_test)
 add_subdirectory(tests/shared_ptr_test)
 add_subdirectory(tests/vector_test)
+add_subdirectory(tests/forward_list_test)
