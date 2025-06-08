@@ -29,6 +29,39 @@ Run all tests by issuing :
 ctest
 ```
 
+## Installing `perf`
+
+On Debian/Ubuntu, install `linux-tools` for your kernel version:
+
+```shell
+sudo apt update
+sudo apt install linux-tools-common linux-tools-$(uname -r)
+```
+
+On Fedora:
+
+```shell
+sudo dnf install perf
+```
+
+On Arch Linux:
+
+```shell
+sudo pacman -S perf
+```
+
+On CentOS/RedHat:
+
+```shell
+sudo yum install perf
+```
+
+Verify the installation
+
+```shell
+perf --version
+```
+
 ## Generating code coverage reports
 
 Ensure that `gcov`, `lcov` and `genhtml` are installed.
