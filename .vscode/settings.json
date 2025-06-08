@@ -76,7 +76,10 @@
         "text_encoding": "cpp",
         "thread": "cpp",
         "cinttypes": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "queue": "cpp",
+        "stack": "cpp",
+        "shared_mutex": "cpp"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/g++"
 }

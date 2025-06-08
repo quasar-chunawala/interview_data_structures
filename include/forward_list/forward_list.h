@@ -320,7 +320,7 @@ namespace dev{
 
                 auto p{m_head};
                 int size{m_size};
-                
+                                   
                 for(auto running_count{1};running_count <= count; ++running_count)
                 {
                     if(running_count > size)

@@ -3,6 +3,7 @@
 #include<initializer_list>
 #include<iterator>
 #include<type_traits>
+#include<memory>
 #include<format>
 
 namespace dev{
@@ -46,8 +47,9 @@ namespace dev{
         }
         
         // addition
-        Iterator operator+(size_type n){
-            return iterator(m_ptr + n);
+        template<typename Self>
+        decltype(auto) operator+(this Self&& self, size_type n){
+            return Iterator(self.m_ptr + n);
         }
         
         // compound addition
@@ -57,8 +59,9 @@ namespace dev{
         }
 
         // subtraction
-        Iterator operator-(size_type n){
-            return iterator(m_ptr - n);
+        template<typename Self>
+        decltype(auto) operator-(this Self&& self, size_type n){
+            return Iterator(self.m_ptr - n);
         }
         
         // compound subtraction
@@ -94,7 +97,7 @@ namespace dev{
 
         // Inequality comparison
         bool operator!=(const Iterator& other) const {
-            return !(*this == m_ptr);
+            return !(m_ptr == other.m_ptr);
         }
 
         // Relational operators
@@ -114,6 +117,10 @@ namespace dev{
             return m_ptr >= other.m_ptr;
         }
 
+        pointer get(){
+            return m_ptr;
+        }
+
         private:
         pointer m_ptr;
     };
@@ -130,33 +137,44 @@ namespace dev{
             using iterator = Iterator<T>;
             using const_iterator = Iterator<const T>;
 
+            template<typename Self>
+            decltype(auto) begin(this Self && self){
+                return Iterator(self.m_elements);
+            }
+            
+            template<typename Self>
+            decltype(auto) end(this Self && self){
+                return Iterator(self.m_elements + self.size());
+            }
+
             // default constructor
             vector() = default;
 
             // parametrized constructor
             vector(size_type n, const_reference init)
-            : m_elements{new value_type[n]()}
+            : m_elements{static_cast<pointer>(std::malloc(n * sizeof(value_type)))}
             , m_size{n}
             , m_capacity{n}
             {
+                auto p{begin()};
                 try{
-                    std::fill(begin(),end(), init);
+                    std::uninitialized_fill(begin(), end(), init);
                 }catch(...){
-                    delete[] m_elements;
+                    std::free(m_elements);
                     throw;
                 }
             }
 
             // copy constructor
             vector(const vector& other)
-            : m_elements{ new value_type[other.m_size]{}}
+            : m_elements{ static_cast<pointer>(std::malloc(other.size() * sizeof(value_type))) }
             , m_size{other.m_size}
             , m_capacity{other.m_size}
             {
                 try{
-                    std::copy(other.begin(), other.end(), begin());
+                    std::uninitialized_copy(other.begin(), other.end(), begin());
                 }catch(...){
-                    delete[] m_elements;
+                    std::free(m_elements);
                     throw;
                 }
             }
@@ -191,21 +209,22 @@ namespace dev{
 
             // constructor that accepts a std::initializer_list<T>{}
             vector(std::initializer_list<T> src)
-            : m_elements{new value_type[src.size()]}
+            : m_elements{ static_cast<pointer>(std::malloc(src.size() * sizeof(value_type))) }
             , m_size{ src.size()}
             , m_capacity{ src.size()}
             {
                 try{
-                    std::copy(src.begin(), src.end(), begin());
+                    std::uninitialized_copy(src.begin(), src.end(), begin());
                 }catch(...){
-                    delete[] m_elements;
+                    std::free(m_elements);
                     throw;
                 }
             }
 
             // Destructor
             ~vector(){
-                delete[] m_elements;
+                std::destroy(begin(), end());
+                std::free(m_elements);
             }
 
             /* Element access member-functions */
@@ -235,16 +254,6 @@ namespace dev{
                 return self.m_elements[self.m_size - 1];
             }
 
-            template<typename Self>
-            auto begin(this Self && self){
-                return self.m_elements;
-            }
-            
-            template<typename Self>
-            auto end(this Self && self){
-                return self.m_elements + self.size();
-            }
-
             /* Capacity related member functions */
             size_type size() const{
                 return m_size;
@@ -265,7 +274,7 @@ namespace dev{
                 if(full())
                     grow();
 
-                m_elements[m_size] = value;
+                std::construct_at(end().get(), value);
                 ++m_size;
             }
 
@@ -273,7 +282,7 @@ namespace dev{
                 if(full())
                     grow();
                 
-                m_elements[m_size] = std::move(value);
+                std::construct_at(end().get(), std::move(value));
                 ++m_size;
             }
 
@@ -286,7 +295,7 @@ namespace dev{
                 if(full())
                     grow();
 
-                m_elements[m_size] = value_type(std::forward<Args>(args)...);
+                std::construct_at(end().get(),std::forward<Args>(args)...);
                 ++m_size;
                 return back();
             }
@@ -297,45 +306,80 @@ namespace dev{
             into `m_elements` pointer and updating the storage capacity.
             */
             void resize(size_type new_capacity){
-                if(new_capacity <= capacity()) return;
+                if(new_capacity == capacity()) return;
 
-                auto p = new T[new_capacity];
+                if(new_capacity < capacity()){
+                    std::destroy(begin() + new_capacity, end());
+                    m_size = new_capacity;
+                    return;
+                }
+
+
+                auto p = static_cast<pointer>(std::malloc(new_capacity * sizeof(value_type)));
                 if constexpr(std::is_nothrow_move_assignable_v<T>){
-                    std::move(begin(), end(), p);
+                    std::uninitialized_move(begin(), end(), p);
                 }else{
                     try{
-                        std::copy(begin(),end(),p);
+                        std::uninitialized_copy(begin(),end(),p);
                     }catch(...){
-                        delete[] p;
+                        std::free(p);
                         throw;
                     }
                 }
 
-                delete[] m_elements;
+                std::uninitialized_fill(p+size(), p+new_capacity, value_type{});
+                std::destroy(begin(), end());
+                std::free(m_elements);
                 m_elements = p;
+                m_size = new_capacity;
                 m_capacity = new_capacity;
             }
 
             /* Inserts a copy of value before position */
-            iterator insert(const_iterator position, const_reference value){
+            template<typename It>
+            requires (std::is_same_v<It,iterator> || std::is_same_v<It,const_iterator>)       
+            iterator insert(It position, const_reference value){
                 if(full())
                     grow();
                 
-                size_type index = std::distance(begin(), position);
-                std::copy_backward(position, end(), end() + 1);
-                m_elements[index] = value;
-                return iterator(m_elements[index]);
+                auto pos_ = const_cast<pointer>(position.get());
+                size_type index = std::distance(begin(), pos_);
+
+                if constexpr(std::is_nothrow_move_constructible_v<T>)
+                {
+                    std::uninitialized_move(end() - 1, end(), end());
+                    std::move_backward(pos_, end()-2, end());
+                }
+                else{
+                    std::uninitialized_copy(end() - 1, end(), end());
+                    std::copy_backward(pos_, end() - 2, end());
+                }
+                
+                std::fill(pos_, pos_ + 1, value);
             }
             
             /* Inserts a value before position using move semantics */
-            iterator insert(const_iterator position, T&& value){
+            template<typename It>
+            requires (std::is_same_v<It,iterator> || std::is_same_v<It,const_iterator>)
+            iterator insert(It position, T&& value){
                 if(full())
                     grow();
                 
-                size_type index = std::distance(begin(), position);
-                std::copy_backward(position, end(), end() + 1);
-                m_elements[index] = std::move(value);
-                return iterator(m_elements[index]);
+                auto pos_ = iterator(position.get());
+                size_type index = std::distance(begin(), pos_);
+
+                if constexpr(std::is_nothrow_move_constructible_v<T>)
+                {
+                    std::uninitialized_move(end() - 1, end(), end());
+                    std::move_backward(pos_, end() - 2, end());
+                }
+                else{
+                    std::uninitialized_copy(end() - 1, end(), end());
+                    std::copy_backward(pos_, end() - 2, end());
+                }
+                
+                std::fill(pos_, pos_ + 1, std::move(value));
+                return pos_;
             }
 
             /* 
@@ -345,7 +389,7 @@ namespace dev{
             */
             template<class InputIt>
             iterator insert(const_iterator position, InputIt first, InputIt last){
-                iterator pos_ = const_cast<iterator>(position);
+                auto pos_ = iterator(position.get());
                 const std::size_t remaining = capacity() - size();
                 const std::size_t n = std::distance(first, last);
                 if(remaining < n){
@@ -354,25 +398,96 @@ namespace dev{
                     pos_ = std::next(begin(), index);
                 }
 
-                std::copy_backward(pos_, end(), end() + n);
-                std::copy(first, last, pos_);
-                m_size += n;
+                
+                /* 1. objects to be displaced from the [pos_,end()) sequence
+                   into the raw memory.
+                */
+                auto num_items_to_displace_from_begin_end_into_raw_memory =
+                std::min<std::ptrdiff_t>(end()-pos_,n);
+                auto where_to_insert_items_from_begin_end_into_raw_memory = 
+                end() + n - num_items_to_displace_from_begin_end_into_raw_memory;
+
+                if constexpr(std::is_nothrow_move_constructible_v<T>)
+                {
+                        std::uninitialized_move(end()-num_items_to_displace_from_begin_end_into_raw_memory, end(), 
+                        where_to_insert_items_from_begin_end_into_raw_memory);
+                }
+                else{
+                        std::uninitialized_copy(end()-num_items_to_displace_from_begin_end_into_raw_memory, end(), 
+                        where_to_insert_items_from_begin_end_into_raw_memory);
+                }
+
+               /* 2. objects to be inserted from the [first, last) seqeuence into
+                  the raw memory.
+
+                  The total number of items to be displaced = n. So, the number of 
+                  objects from [first,last) to be inserted into raw memory, is
+                  n - num_items_to_displace_from_begin_end_into_raw_memory
+               */
+
+                auto num_items_to_insert_from_first_last_into_raw_memory = 
+                std::max<std::ptrdiff_t>(0,n - num_items_to_displace_from_begin_end_into_raw_memory );
+                std::uninitialized_copy(last-num_items_to_insert_from_first_last_into_raw_memory, last, end());
+
+                /* 3. objects to be copied/moved from [begin,end()) to the same space
+                */
+                auto num_items_to_backward_displace_from_begin_end = 
+                std::max<ptrdiff_t>(0, end() - pos_ - num_items_to_displace_from_begin_end_into_raw_memory);
+                if constexpr(std::is_nothrow_move_constructible_v<T>)
+                {
+                    std::move_backward(pos_, pos_ + num_items_to_backward_displace_from_begin_end, end());
+                }
+                else{
+                    std::copy_backward(pos_, pos_ + num_items_to_backward_displace_from_begin_end, end());
+                }
+
+                /* 4. objects to be copied from [first,last) into the space [pos,end())
+                */
+               auto num_items_to_copy_from_first_last_into_begin_end = 
+               std::max<ptrdiff_t>(0, n - num_items_to_insert_from_first_last_into_raw_memory);
+               std::copy(first, first + num_items_to_copy_from_first_last_into_begin_end, pos_);
+
+               m_size += n;
+               return pos_;
+            }
+
+            template<typename It>
+            requires (std::is_same_v<It,iterator> || std::is_same_v<It,const_iterator>)            
+            iterator erase(It position){
+                auto pos_ = iterator(position.get());
+                if(pos_ == end()) return pos_;
+                
+                std::copy(std::next(pos_),end(),pos_);
+                std::destroy_at(std::prev(end()).get());
+                --m_size;
                 return pos_;
             }
 
-            iterator erase(const_iterator pos){
-                iterator pos_ = const_cast<iterator>(pos);
-                if(pos_ == end()) return pos_;
+            void reserve(size_type new_capacity){
+                if(new_capacity <= capacity()) return;
 
-                std::copy(std::next(pos_),end(),pos_);
-                *std::prev(end()) = {};
-                --m_size;
-                return pos_;
+                auto p = static_cast<pointer>(std::malloc(new_capacity * sizeof(value_type)));
+
+                if constexpr(std::is_nothrow_move_assignable_v<T>){
+                    std::uninitialized_move(begin(), end(), p);
+                }
+                else try{
+                    std::uninitialized_copy(begin(), end(), p);
+                }catch(...){
+                    std::free(p);
+                    throw;
+                }
+
+                std::destroy(begin(), end());
+                std::free(m_elements);
+                m_elements = p;
+                m_capacity = new_capacity;
             }
             private:
             pointer m_elements{nullptr};
             size_type m_size{0};
             size_type m_capacity{0};
+            friend iterator;
 
             bool full(){
                 return size() == capacity();
@@ -380,7 +495,7 @@ namespace dev{
 
             /* grow() - Used to dynamically grow the container when full*/
             void grow(){
-                resize(capacity() ? capacity() * 2 : 16);
+                reserve(capacity() ? capacity() * 2 : 16);
             }
     };
 }
