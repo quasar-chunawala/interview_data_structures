@@ -79,7 +79,9 @@
         "typeinfo": "cpp",
         "queue": "cpp",
         "stack": "cpp",
-        "shared_mutex": "cpp"
+        "shared_mutex": "cpp",
+        "regex": "cpp",
+        "cfenv": "cpp"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/g++"
 }
