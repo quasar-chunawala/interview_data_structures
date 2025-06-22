@@ -8,6 +8,7 @@
 #include<format>
 #include<iostream>
 
+// Compiler Explorer: https://godbolt.org/z/ohzo637fz
 namespace dev{
 
     template<typename T> class vector;
