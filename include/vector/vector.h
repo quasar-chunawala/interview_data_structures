@@ -177,7 +177,7 @@ namespace dev{
             for(;p!=i;++p)
                 std::destroy_at(p.m_ptr);
 
-            ::delete[] (m_elements);
+            ::operator delete (m_elements);
             throw;
         }
         template<typename U>
