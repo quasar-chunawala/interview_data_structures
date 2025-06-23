@@ -99,7 +99,7 @@ TEST(VectorTest, MoveConstructorTest)
     dev::vector vec2(std::move(vec1));
     EXPECT_EQ(AllocCounter::default_ctor_count,1);
     EXPECT_EQ(AllocCounter::copy_ctor_count,10);    // We just re-wire the internal
-                                                // pointers, so the copy ctor is invoked only 10 times. 
+                                            // pointers, so the copy ctor is invoked only 10 times. 
 }
 
 TEST(VectorTest, CopyAssignmentTest)
@@ -260,4 +260,47 @@ TEST(VectorTest, EraseTest)
     EXPECT_EQ(v[0], 1);
     EXPECT_EQ(v[1], 3);
     EXPECT_EQ(v[2], 4);
+}
+
+TEST(VectorTest, InsertRangeTest) {
+    // Create a dev::vector and populate it with initial values
+    dev::vector<int> v1{1, 2, 3, 7, 8};
+
+    // Create a standard vector to use as the source range
+    std::vector<int> source{4, 5, 6};
+
+    // Insert the range [source.begin(), source.end()) into v at position v.begin() + 3
+    auto pos = v1.insert(v1.begin() + 3, source.begin(), source.end());
+
+    // Check that the returned iterator points to the first inserted element
+    EXPECT_EQ(*pos, 4);
+
+    // Check the size of the vector after insertion
+    EXPECT_EQ(v1.size(), 8);
+
+    // Check the contents of the vector after insertion
+    for(int i{0};i<v1.size();++i){
+        EXPECT_EQ(v1[i],i+1);
+    }
+
+    dev::vector<int> v2{17, 5, 28};
+    dev::vector<int> rng2{42, 3, 16, 4};
+
+    auto idx = v2.insert(v2.begin(), rng2.begin(), rng2.end());
+    EXPECT_EQ(v2[0], 42);
+    EXPECT_EQ(v2[1],3);
+    EXPECT_EQ(v2[2],16);
+    EXPECT_EQ(v2[3],4);
+    EXPECT_EQ(v2[4],17);
+    EXPECT_EQ(v2[5],5);
+    EXPECT_EQ(v2[6],28);
+
+    dev::vector v3{1, 3, 5, 7};
+    dev::vector rng3{4, 5, 6};
+    v3.insert(v3.begin(),rng3.begin(), rng3.end());
+    EXPECT_EQ(v3[0], 4);
+    EXPECT_EQ(v3[1], 5);
+    EXPECT_EQ(v3[2], 6);
+    EXPECT_EQ(v3[3], 1);
+    EXPECT_EQ(v3[4], 3);
 }

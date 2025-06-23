@@ -421,8 +421,8 @@ namespace dev{
             */
             template<class InputIt>
             iterator insert(const_iterator position, InputIt first, InputIt last){
-                static_assert(first < last);
-                auto index = std::distance(begin(), position);
+                //static_assert(first < last);
+                auto index = std::distance(begin(), iterator(position));
                 /* 
                 Algorithm.
                 ----------
@@ -475,12 +475,12 @@ namespace dev{
                          to initialized storage.
                     */
                     if constexpr(std::is_nothrow_move_constructible_v<T>){
-                        std::uninitialized_move(end() - src_len, end(), d_first);
-                        std::move_backward(pos_, end() - src_len, end() - src_len);
+                        std::uninitialized_move(end() - src_len, end(), d_last - src_len);
+                        std::move_backward(pos_, end() - src_len, end());
                     }
                     else{
-                        std::uninitialized_copy(end() - src_len, end(), d_first);
-                        std::copy_backward(pos_, end() - src_len, end() - src_len);
+                        std::uninitialized_copy(end() - src_len, end(), d_last - src_len);
+                        std::copy_backward(pos_, end() - src_len, end());
                     }
                 }
 
