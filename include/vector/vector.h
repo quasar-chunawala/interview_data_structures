@@ -6,9 +6,11 @@
 #include<memory>
 #include<utility>
 #include<format>
-#include<iostream>
+#include <cassert>
+#include <stdexcept>
+#include <iostream>
 
-// Compiler Explorer: https://godbolt.org/z/f18EG13Ga
+// Compiler Explorer: https://godbolt.org/z/zb9ronz4Y
 namespace dev{
 
     template<typename T> class vector;
@@ -22,15 +24,17 @@ namespace dev{
         using pointer = T*;
         using size_type = std::size_t;
         friend vector<T>;
-        
+        friend Iterator<const T>;
+        friend Iterator<std::remove_const_t<T>>;
+
         Iterator() = default;
 
         explicit Iterator(pointer ptr) : m_ptr(ptr) {}
 
         template<typename U>
-        requires std::is_convertible_v<U*, T*>
+        requires std::is_convertible_v<std::remove_const_t<U>*, T*>
         Iterator(const Iterator<U>& other)
-        : m_ptr{other.m_ptr}
+        : m_ptr{const_cast<T*>(other.m_ptr)}
         {}
         
         // pre-increment
@@ -204,7 +208,7 @@ namespace dev{
             // Track the index of the position, where we'd like to insert 
             // the user-supplied value. This is because, if a reallocation
             // is triggered, all iterators are invalidated.
-            size_type index = std::distance(begin(), position);
+            size_type index = std::distance(begin(), iterator(position));
             if(full())
                 grow();
             
@@ -222,7 +226,7 @@ namespace dev{
                 std::uninitialized_copy(end() - 1, end(), end());
                 std::copy_backward(pos_, end() - 1, end());
             }
-
+            ++m_size;
             return pos_;
         }
 

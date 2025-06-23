@@ -184,16 +184,19 @@ TEST(VectorTest, EmplaceBackTest)
     EXPECT_EQ(v[1].y, 4);
 }
 
-// FIXME: This is buggy code
-/*TEST(VectorTest, InsertTest)
+
+TEST(VectorTest, InsertTest)
 {
     dev::vector<int> v{1, 2, 4};
     auto pos = v.insert(v.begin() + 2, 200); // overload (1)
 
     EXPECT_EQ(v.size(), 4);
+    EXPECT_EQ(v[0], 1);
+    EXPECT_EQ(v[1], 2);
     EXPECT_EQ(v[2], 200);
+    EXPECT_EQ(v[3], 4);
 }
-*/
+
 
 TEST(VectorTest, EraseTest)
 {
