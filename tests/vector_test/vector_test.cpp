@@ -1,6 +1,29 @@
 #include <gtest/gtest.h>
 #include "vector.h"
 
+struct AllocCounter{
+    static inline uint default_ctor_count{0};
+    static inline uint copy_ctor_count{0};
+    static inline uint move_ctor_count{0};
+    static inline uint dtor_count{0};
+
+    AllocCounter(){
+        ++default_ctor_count;
+    }
+
+    AllocCounter(const AllocCounter&){
+        ++copy_ctor_count;
+    }
+
+    AllocCounter(AllocCounter&&){
+        ++move_ctor_count;
+    }
+
+    ~AllocCounter(){
+        ++dtor_count;
+    }
+};
+
 TEST(VectorTest, DefaultConstructorTest)
 {
     dev::vector<int> v;
@@ -26,6 +49,11 @@ TEST(VectorTest, ParameterizedConstructorTest)
 
     EXPECT_EQ(v.size() == 10, true);
     EXPECT_EQ(v[0] == 5.5, true);
+
+    AllocCounter allocCounter;
+    dev::vector vec(10, allocCounter);
+    EXPECT_EQ(AllocCounter::default_ctor_count,1);
+    EXPECT_EQ(AllocCounter::copy_ctor_count,10);
 }
 
 TEST(VectorTest, CopyConstructorTest){

@@ -307,7 +307,7 @@ namespace dev{
             // Destructor
             ~vector(){
                 std::destroy(begin(), end());
-                ::delete[] m_elements;
+                ::operator delete (m_elements);
             }
 
             /* Element access member-functions */
