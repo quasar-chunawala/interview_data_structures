@@ -129,7 +129,7 @@ TEST(VectorTest, ReserveTest)
 }
 
 //FIXME: Resize() method needs thorough testing.
-/*TEST(VectorTest, ResizeTest)
+TEST(VectorTest, ResizeTest)
 {
     dev::vector<int> v{1, 2, 3};
     v.resize(5);
@@ -142,7 +142,7 @@ TEST(VectorTest, ReserveTest)
     EXPECT_EQ(v.size(), 2);
     EXPECT_EQ(v[0], 1);
     EXPECT_EQ(v[1], 2);
-}*/
+}
 
 TEST(VectorTest, PushBackTest)
 {

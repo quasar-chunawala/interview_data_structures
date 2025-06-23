@@ -392,6 +392,8 @@ namespace dev{
                 // Default construct elements at indices [current_size,...,new_size-1]
                 for(auto p{begin() + current_size};p!=begin()+new_size;++p)
                     std::construct_at(p.get(), value_type{});
+                    
+                m_size = new_size;
             }
 
             /* Inserts a copy of value before position */      
