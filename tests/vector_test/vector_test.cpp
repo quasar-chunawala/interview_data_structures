@@ -15,12 +15,19 @@ struct AllocCounter{
         ++copy_ctor_count;
     }
 
-    AllocCounter(AllocCounter&&){
+    AllocCounter(AllocCounter&&) noexcept{
         ++move_ctor_count;
     }
 
     ~AllocCounter(){
         ++dtor_count;
+    }
+
+    static void reset(){
+        default_ctor_count = 0;
+        move_ctor_count = 0;
+        copy_ctor_count = 0;
+        dtor_count = 0;
     }
 };
 
@@ -33,6 +40,7 @@ TEST(VectorTest, DefaultConstructorTest)
 
 TEST(VectorTest, InitializerListTest)
 {
+    AllocCounter::reset();
     dev::vector<int> v{1,2,3,4,5};
     
     EXPECT_EQ(!v.empty(), true);
@@ -41,15 +49,25 @@ TEST(VectorTest, InitializerListTest)
     for(int i{0};i<v.size();++i){
         EXPECT_EQ(v[i],i+1);
     }
+
+    
+    dev::vector vec{AllocCounter(), AllocCounter(), AllocCounter()};
+
+    EXPECT_EQ(!vec.empty(),true);
+    EXPECT_EQ(vec.size() == 3, true);
+    EXPECT_EQ(AllocCounter::default_ctor_count == 3, true);
+    EXPECT_EQ(AllocCounter::copy_ctor_count == 3, true);
 }
 
 TEST(VectorTest, ParameterizedConstructorTest)
 {
+    AllocCounter::reset();
     dev::vector v(10, 5.5);
 
     EXPECT_EQ(v.size() == 10, true);
     EXPECT_EQ(v[0] == 5.5, true);
 
+    AllocCounter::reset();
     AllocCounter allocCounter;
     dev::vector vec(10, allocCounter);
     EXPECT_EQ(AllocCounter::default_ctor_count,1);
@@ -68,6 +86,7 @@ TEST(VectorTest, CopyConstructorTest){
 
 TEST(VectorTest, MoveConstructorTest)
 {
+    AllocCounter::reset();
     dev::vector<int> v1{1, 2, 3};
     dev::vector<int> v2(std::move(v1));
 
@@ -75,6 +94,12 @@ TEST(VectorTest, MoveConstructorTest)
     EXPECT_EQ(v1.capacity(), 0);
     EXPECT_EQ(v2.size(), 3);
     EXPECT_EQ(v2[0], 1);
+
+    dev::vector vec1(10, AllocCounter());
+    dev::vector vec2(std::move(vec1));
+    EXPECT_EQ(AllocCounter::default_ctor_count,1);
+    EXPECT_EQ(AllocCounter::copy_ctor_count,10);    // We just re-wire the internal
+                                                // pointers, so the copy ctor is invoked only 10 times. 
 }
 
 TEST(VectorTest, CopyAssignmentTest)
