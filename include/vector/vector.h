@@ -8,7 +8,7 @@
 #include<format>
 #include<iostream>
 
-// Compiler Explorer: https://godbolt.org/z/ohzo637fz
+// Compiler Explorer: https://godbolt.org/z/f18EG13Ga
 namespace dev{
 
     template<typename T> class vector;
@@ -177,13 +177,13 @@ namespace dev{
             throw;
         }
         template<typename U>
-        void copy_helper(const U& src){
+        void copy_helper(const U& src, std::optional<size_t> opt_size){
             auto i{begin()};
             if constexpr(std::is_same_v<U,T>)
             {
                 //std::cout << "\n" << "Inside copy-helper";
                 try{
-                    for(;i!=end();++i)
+                    for(;i!=begin()+opt_size.value();++i)
                         std::construct_at(i.m_ptr,src);
                 }catch(...){
                     destroy_helper(i);            
@@ -192,7 +192,7 @@ namespace dev{
             else {
                 auto j{src.begin()};
                 try{
-                    for(;i!=end();++i,++j)
+                    for(;j!=src.end();++i,++j)
                         std::construct_at(i.m_ptr,*j);
                 }catch(...){
                     destroy_helper(i);            
@@ -236,7 +236,7 @@ namespace dev{
             
             auto end(this auto&& self){
                 if constexpr(std::is_const_v<std::remove_reference_t<decltype(self)>>)
-                    return const_iterator(self.m_data + self.m_size);
+                    return const_iterator(self.m_elements + self.m_size);
                 else
                     return iterator(self.m_elements + self.m_size);
             }
@@ -250,7 +250,7 @@ namespace dev{
             , m_size{0}
             , m_capacity{n}
             {
-                copy_helper(init);
+                copy_helper(init,n);
                 m_size = n;
             }
 
@@ -260,7 +260,7 @@ namespace dev{
             , m_size{other.m_size}
             , m_capacity{other.m_size}
             {
-                copy_helper(other);
+                copy_helper(other,std::nullopt);
             }
 
 
@@ -297,7 +297,7 @@ namespace dev{
             , m_size{ src.size()}
             , m_capacity{ src.size()}
             {
-                copy_helper(src);
+                copy_helper(src,std::nullopt);
             }
 
             // Destructor

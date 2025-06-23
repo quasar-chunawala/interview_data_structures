@@ -21,13 +21,13 @@ TEST(VectorTest, InitializerListTest)
 }
 
 //FIXME : The parameterized constructor logic needs more testing
-/*TEST(VectorTest, ParameterizedConstructorTest)
+TEST(VectorTest, ParameterizedConstructorTest)
 {
     dev::vector v(10, 5.5);
 
     EXPECT_EQ(v.size() == 10, true);
     EXPECT_EQ(v[0] == 5.5, true);
-}*/
+}
 
 TEST(VectorTest, CopyConstructorTest){
     dev::vector v1{1.0, 2.0, 3.0, 4.0, 5.0};
