@@ -20,7 +20,6 @@ TEST(VectorTest, InitializerListTest)
     }
 }
 
-//FIXME : The parameterized constructor logic needs more testing
 TEST(VectorTest, ParameterizedConstructorTest)
 {
     dev::vector v(10, 5.5);
@@ -128,7 +127,6 @@ TEST(VectorTest, ReserveTest)
     EXPECT_EQ(v.size(), 0);
 }
 
-//FIXME: Resize() method needs thorough testing.
 TEST(VectorTest, ResizeTest)
 {
     dev::vector<int> v{1, 2, 3};
