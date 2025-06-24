@@ -102,7 +102,8 @@
         "valarray": "cpp"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/g++",
-
+    "editor.formatOnSave": true,
+    "clang-format.executable": "/usr/bin/clang-format",
     "launch": {
         "configurations": [
             {
