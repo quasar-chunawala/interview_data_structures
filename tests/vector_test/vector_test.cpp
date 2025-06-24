@@ -178,6 +178,10 @@ TEST(VectorTest, SizeAndCapacityTest)
     v.push_back(42);
     EXPECT_EQ(v.size(), 1);
     EXPECT_GT(v.capacity(), 0);
+
+    v.push_back(v.back());
+    EXPECT_EQ(v.size(), 2);
+    EXPECT_EQ(v[1], 42);
 }
 
 TEST(VectorTest, ReserveTest)

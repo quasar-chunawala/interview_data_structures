@@ -162,7 +162,8 @@ template <typename T> class vector
     using iterator = Iterator<T>;
     using const_iterator = Iterator<T const>;
 
-    /* Capacity related member functions */
+    // Capacity related member functions
+
     size_type size() const
     {
         return m_size;
@@ -189,7 +190,7 @@ template <typename T> class vector
         return size() == capacity();
     }
 
-    /* grow() - Used to dynamically grow the container when full*/
+    // grow() - Used to dynamically grow the container when full
     void grow()
     {
         reserve(capacity() ? capacity() * 2 : 16);
@@ -204,12 +205,12 @@ template <typename T> class vector
         ::operator delete(m_elements);
         throw;
     }
+
     template <typename U> void copy_helper(const U& src, std::optional<size_t> opt_size)
     {
         auto i{begin()};
         if constexpr (std::is_same_v<U, T>)
         {
-            // std::cout << "\n" << "Inside copy-helper";
             try
             {
                 for (; i != begin() + opt_size.value(); ++i)
@@ -411,13 +412,13 @@ template <typename T> class vector
         return back();
     }
 
-    /* resize(size_t count) - Resize the container to contain count elements
-    - If count == current size, do nothing.
-    - If count < size(), the container is reduced to the first count elements
-    - If count > size(), additional default contructed elements of T() are
-    appended. If count > capacity, reallocation is triggered.
-    https://en.cppreference.com/w/cpp/container/vector/resize
-    */
+    // resize(size_t count) - Resize the container to contain count elements
+    // - If count == current size, do nothing.
+    // - If count < size(), the container is reduced to the first count elements
+    // - If count > size(), additional default contructed elements of T() are
+    // appended. If count > capacity, reallocation is triggered.
+    // https://en.cppreference.com/w/cpp/container/vector/resize
+
     void resize(size_type new_size)
     {
         size_t current_size = size();
@@ -441,7 +442,7 @@ template <typename T> class vector
         m_size = new_size;
     }
 
-    /* Inserts a copy of value before position */
+    // Inserts a copy of value before position
     iterator insert(const_iterator position, const_reference value)
     {
         iterator pos_ = insert_helper(position);
@@ -449,7 +450,7 @@ template <typename T> class vector
         return pos_;
     }
 
-    /* Inserts a value before position using move semantics */
+    // Inserts a value before position using move semantics
     iterator insert(const_iterator position, T&& value)
     {
         iterator pos_ = insert_helper(position);
@@ -457,22 +458,20 @@ template <typename T> class vector
         return pos_;
     }
 
-    /*
-    We should be able to use pair of iterators from any container
-    as a source of values to insert, which is a very useful property
-    indeed.
-    */
+    // We should be able to use pair of iterators from any container
+    // as a source of values to insert, which is a very useful property
+    // indeed.
     template <class InputIt> iterator insert(const_iterator position, InputIt first, InputIt last)
     {
 
         auto index = std::distance(begin(), iterator(position));
-        /*
-        Algorithm.
-        ----------
-        1. Determine if the elements in the range [first,last) can
-           fit into the remaining_capacity = capacity() - size().
-           If not, a reallocation is triggered.
-        */
+
+        // Algorithm.
+        // ----------
+        // 1. Determine if the elements in the range [first,last) can
+        //    fit into the remaining_capacity = capacity() - size().
+        //    If not, a reallocation is triggered.
+
         // Possible reallocation
         if (std::distance(first, last) > capacity() - size())
         {
@@ -481,18 +480,17 @@ template <typename T> class vector
         }
 
         iterator pos_ = begin() + index;
-        /*
-                    num_elems_to_shift
-        2.            |<--------->|
-          begin()     position    end()                               capacity
-          |           |           |
-           ===========================================================
-          |42 |5  |17 |28 |63 |55 |   |   |   |   |   |   |   |   |   |
-           ===========================================================
-                                  ^-----------------------------------^
-                                              Raw Storage
 
-        */
+        //             num_elems_to_shift
+        // 2.            |<--------->|
+        //   begin()     position    end()                               capacity
+        //   |           |           |
+        //    ===========================================================
+        //   |42 |5  |17 |28 |63 |55 |   |   |   |   |   |   |   |   |   |
+        //    ===========================================================
+        //                           ^-----------------------------------^
+        //                                       Raw Storage
+
         size_t src_len = std::distance(first, last);
         size_t num_elems_to_shift = std::distance(pos_, end());
         iterator d_first = pos_ + src_len;
@@ -500,11 +498,9 @@ template <typename T> class vector
 
         if (src_len >= num_elems_to_shift)
         {
-            /*
-            a) If 3 or more elements have to be inserted at pos_,
-             then the range [position,end) has to be moved/copied to
-             raw storage.
-            */
+            // a) If 3 or more elements have to be inserted at pos_,
+            //  then the range [position,end) has to be moved/copied to
+            //  raw storage.
             if constexpr (std::is_nothrow_move_constructible_v<T>)
                 std::uninitialized_move(pos_, end(), d_first);
             else
@@ -512,14 +508,12 @@ template <typename T> class vector
         }
         else
         {
-            /*
-            b) If less than 3 elements have to be inserted at pos_,
-            then
-              => a subsequence [end() - src_len, end()) has to be copied/moved
-                 to raw storage.
-              => the subsequence [pos_,end() - src_len) has to be copied/moved
-                 to initialized storage.
-            */
+            // b) If less than 3 elements have to be inserted at pos_,
+            // then
+            //   => a subsequence [end() - src_len, end()) has to be copied/moved
+            //      to raw storage.
+            //   => the subsequence [pos_,end() - src_len) has to be copied/moved
+            //      to initialized storage.
             if constexpr (std::is_nothrow_move_constructible_v<T>)
             {
                 std::uninitialized_move(end() - src_len, end(), d_last - src_len);
@@ -532,14 +526,10 @@ template <typename T> class vector
             }
         }
 
-        /*
-        3. Copy/move elements from src to dest range.
-        */
+        // 3. Copy/move elements from src to dest range.
         if (src_len <= num_elems_to_shift)
         {
-            /*
-              a) Copy/move the elements from the source range to [pos_,pos+src_len)
-            */
+            // a) Copy/move the elements from the source range to [pos_,pos+src_len)
             if constexpr (std::is_nothrow_move_constructible_v<T>)
             {
                 std::move(first, last, pos_);
@@ -551,11 +541,9 @@ template <typename T> class vector
         }
         else
         {
-            /*
-              b) (i) Copy/move the elements from
-                 the subsequence [first,first + num_elems_to_shift)
-                 to [pos_,end())
-            */
+            // b) (i) Copy/move the elements from
+            //     the subsequence [first,first + num_elems_to_shift)
+            //     to [pos_,end())
             if constexpr (std::is_nothrow_move_constructible_v<T>)
             {
                 std::move(first, first + num_elems_to_shift, pos_);
@@ -564,10 +552,8 @@ template <typename T> class vector
             {
                 std::copy(first, first + num_elems_to_shift, pos_);
             }
-            /*
-            (ii) Copy/move the elements from [first+num_elems_to_shift,last)
-                 to uninitialized storage [end(),pos_ + src_len)
-            */
+            // (ii) Copy/move the elements from [first+num_elems_to_shift,last)
+            //      to uninitialized storage [end(),pos_ + src_len)
             if constexpr (std::is_nothrow_move_constructible_v<T>)
             {
                 std::uninitialized_move(first + num_elems_to_shift, last, end());
