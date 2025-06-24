@@ -10,7 +10,10 @@
 #include <type_traits>
 #include <utility>
 
+// This design is in part inspired by the impl in
+// C++ Memory Management by Patrice Roy, Packt, 2025.
 // Compiler Explorer: https://godbolt.org/z/efKWcGsKx
+
 namespace dev
 {
 
@@ -196,10 +199,11 @@ template <typename T> class vector
         reserve(capacity() ? capacity() * 2 : 16);
     }
 
-    void destroy_helper(Iterator<T> i)
+    // destroy helper in case copy construction fails
+    void destroy_helper(Iterator<T> it)
     {
         auto p{begin()};
-        for (; p != i; ++p)
+        for (; p != it; ++p)
             std::destroy_at(p.m_ptr);
 
         ::operator delete(m_elements);
@@ -375,7 +379,8 @@ template <typename T> class vector
         return self.m_elements[self.m_size - 1];
     }
 
-    /* Modifiers */
+    // Modifiers
+
     // push_back(const T&) : appends a copy of the value
     // to the end of the container
     void push_back(const_reference value)
