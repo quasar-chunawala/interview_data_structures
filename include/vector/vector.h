@@ -240,6 +240,34 @@ template <typename T> class vector
         }
     }
 
+    pointer allocate_new_storage(size_t new_capacity)
+    {
+        auto p = static_cast<pointer>(::operator new(sizeof(value_type) * new_capacity));
+        return p;
+    }
+
+    void copy_from_old_storage_to_new(pointer ptr_to_new_storage_block)
+    {
+        iterator d_first = iterator(ptr_to_new_storage_block);
+
+        if constexpr (std::is_nothrow_move_constructible_v<T>)
+        {
+            std::uninitialized_move(begin(), end(), d_first);
+        }
+        else
+        {
+            try
+            {
+                std::uninitialized_copy(begin(), end(), d_first);
+            }
+            catch (...)
+            {
+                ::operator delete(ptr_to_new_storage_block);
+                throw;
+            }
+        }
+    }
+
     auto insert_helper(const_iterator position)
     {
         // Track the index of the position, where we'd like to insert
@@ -380,25 +408,44 @@ template <typename T> class vector
     }
 
     // Modifiers
-
-    // push_back(const T&) : appends a copy of the value
-    // to the end of the container
-    void push_back(const_reference value)
+    template <typename U>
+        requires std::is_convertible_v<U, T>
+    void push_back(U&& value)
     {
+        pointer p{nullptr};
+        size_t new_capacity = m_capacity ? 2 * m_capacity : 16;
+
         if (full())
-            grow();
+        {
+            // can throw, if allocation fails
+            p = allocate_new_storage(new_capacity);
+            try
+            {
+                // can throw if copy c'tor fails
+                std::construct_at(p + m_size, std::forward<U>(value));
+            }
+            catch (...)
+            {
+                ::operator delete(p);
+                throw;
+            }
 
-        std::construct_at(end().get(), value);
-        ++m_size;
-    }
+            copy_from_old_storage_to_new(p);
 
-    void push_back(T&& value)
-    {
-        if (full())
-            grow();
+            // Deallocate old storage
+            std::destroy(begin(), end());
+            ::operator delete(m_elements);
 
-        std::construct_at(end().get(), std::move(value));
-        ++m_size;
+            // Reassign m_elements and m_capacity
+            m_elements = p;
+            m_capacity = new_capacity;
+            ++m_size;
+        }
+        else
+        {
+            std::construct_at(begin().get() + m_size, std::forward<U>(value));
+            ++m_size;
+        }
     }
 
     void pop_back()
@@ -592,23 +639,9 @@ template <typename T> class vector
         if (new_capacity <= capacity())
             return;
 
-        auto p = static_cast<pointer>(::operator new(sizeof(value_type) * new_capacity));
-        iterator d_first = iterator(p);
+        auto p = allocate_new_storage(new_capacity);
 
-        if constexpr (std::is_nothrow_move_assignable_v<T>)
-        {
-            std::uninitialized_move(begin(), end(), d_first);
-        }
-        else
-            try
-            {
-                std::uninitialized_copy(begin(), end(), d_first);
-            }
-            catch (...)
-            {
-                ::operator delete(p);
-                throw;
-            }
+        copy_from_old_storage_to_new(p);
 
         std::destroy(begin(), end());
         ::operator delete(m_elements);

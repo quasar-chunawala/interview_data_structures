@@ -14,7 +14,7 @@ template <typename T> struct default_deleter
     }
 };
 
-/* Default deleter - pointee is an array of objects version */
+// Default deleter - pointee is an array of objects version
 template <typename T> struct default_deleter<T[]>
 {
     void operator()(T* raw_ptr)
@@ -23,29 +23,35 @@ template <typename T> struct default_deleter<T[]>
     }
 };
 
-/* Single object version */
+// Single object version
 template <typename T, typename D = default_deleter<T>> class unique_ptr : public D
 {
   public:
     using deleter_type = D;
 
-    /* Default c'tor */
+    // Default c'tor
     unique_ptr() = default;
 
+    // Copy c'tor and copy assignment are delete'd.
     unique_ptr(const unique_ptr&) = delete;
     unique_ptr& operator=(const unique_ptr&) = delete;
 
-    /* Parameteric constructor */
+    // Parameteric constructor
     unique_ptr(T* ptr) : m_underlying_ptr{ptr} {}
 
-    /* Swap function */
-    void swap(unique_ptr& other) noexcept
+    // swap function
+    template <typename U, typename OtherDeleter>
+        requires std::is_convertible_v<U, T>
+    void swap(unique_ptr<U, OtherDeleter>& other) noexcept
     {
         std::swap(m_underlying_ptr, other.m_underlying_ptr);
     }
 
     /* Move constructor */
-    unique_ptr(unique_ptr&& other) : m_underlying_ptr{std::move(other.m_underlying_ptr)} {}
+    unique_ptr(unique_ptr&& other)
+        : m_underlying_ptr{std::exchange(other.m_underlying_ptr, nullptr)}
+    {
+    }
 
     /* Move assignment */
     unique_ptr& operator=(unique_ptr&& other)

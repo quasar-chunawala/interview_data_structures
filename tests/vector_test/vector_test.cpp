@@ -218,6 +218,18 @@ TEST(VectorTest, PushBackTest)
     EXPECT_EQ(v[0], 1);
     EXPECT_EQ(v[1], 2);
     EXPECT_EQ(v[2], 3);
+
+    // The design of push_back/insert is slightly hard to get right.
+    // If the vector is full and you reallocate(grow) the vector right
+    // in the beginning, then value in vec.push_back(value) becomes
+    // a dangling reference, if it refers to the old storage (an element of the vector itself e.g.
+    // vec.back()). This test is meant for such an edge case.
+    dev::vector<int> vec{1};
+    for (int i = 0; i < 10; ++i)
+    {
+        vec.push_back(vec.back());
+        EXPECT_EQ(vec.back(), 1);
+    }
 }
 
 TEST(VectorTest, PopBackTest)
