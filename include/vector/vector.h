@@ -338,6 +338,16 @@ template <typename T> class vector {
         return self.m_elements[self.m_size - 1];
     }
 
+    template <typename U>
+        requires std::is_convertible_v<U, T>
+    void construct_at_addr(pointer ptr, U&& value) {
+        if constexpr (std::is_nothrow_move_constructible_v<U>) {
+            std::construct_at(ptr, std::move(value));
+        } else {
+            std::construct_at(ptr, value);
+        }
+    }
+
     // Modifiers
     template <typename U>
         requires std::is_convertible_v<U, T>
@@ -417,17 +427,78 @@ template <typename T> class vector {
         m_size = new_size;
     }
 
-    // Inserts a copy of value before position
-    iterator insert(const_iterator position, const_reference value) {
-        iterator pos_ = insert_helper(position);
-        *pos_ = value;
-        return pos_;
-    }
+    // Inserts the user-supplied value before position
+    template <typename U>
+        requires std::is_convertible_v<U, T>
+    iterator insert(const_iterator position, U&& value) {
+        // If a reallocation is triggered, all iterators are invalidated
+        // and additionally value would also become a dangling reference,
+        // if it refers to an existing element of the vector.
+        size_type index = std::distance(begin(), iterator(position));
+        auto pos_ = iterator(position);
 
-    // Inserts a value before position using move semantics
-    iterator insert(const_iterator position, T&& value) {
-        iterator pos_ = insert_helper(position);
-        *pos_ = std::move(value);
+        if (full()) {
+            size_t new_capacity = m_capacity ? 2 * m_capacity : 16;
+            auto ptr_new_blk = allocate_new_storage(new_capacity);
+
+            try {
+                construct_at_addr(ptr_new_blk + index, std::forward<U>(value));
+            } catch (...) {
+                ::operator delete(ptr_new_blk);
+                throw;
+            }
+
+            // Copy/move elements from m_data[0..index-1] to ptr_new_blk[0..index-1]
+            auto p1{begin()};
+            size_t i{0};
+
+            try {
+                for (; p1 != begin() + index; ++p1, ++i) {
+                    construct_at_addr(ptr_new_blk + i, std::forward<U>(*p1));
+                }
+            } catch (...) {
+                auto q{iterator(ptr_new_blk)};
+                std::destroy(q, q + i);
+                std::destroy_at(q.m_ptr + index);
+                ::operator delete(ptr_new_blk);
+                throw;
+            }
+
+            // Copy/move elements from m_data[index...] to ptr_new_blk[index+1...]
+            auto p2{begin() + index};
+            size_t j{index + 1};
+
+            try {
+                for (; p2 != end(); ++p2, ++j) {
+                    construct_at_addr(ptr_new_blk + j, std::forward<U>(*p2));
+                }
+            } catch (...) {
+                auto q{ptr_new_blk};
+                std::destroy(q, q + j);
+                ::operator delete(ptr_new_blk);
+                throw;
+            }
+
+            std::destroy(begin(), end());
+            ::operator delete(m_elements);
+            m_elements = ptr_new_blk;
+            m_capacity = new_capacity;
+            pos_ = begin() + index;
+            ++m_size;
+        } else {
+            if constexpr (std::is_nothrow_move_constructible_v<T>) {
+                std::uninitialized_move(end() - 1, end(), end());
+                std::move_backward(pos_, end(), end());
+                *pos_ = std::forward<U>(value);
+                ++m_size;
+            } else {
+                std::uninitialized_copy(end() - 1, end(), end());
+                std::copy_backward(pos_, end(), end());
+                *pos_ = value;
+                ++m_size;
+            }
+        }
+
         return pos_;
     }
 
@@ -537,13 +608,13 @@ template <typename T> class vector {
         if (new_capacity <= capacity())
             return;
 
-        auto p = allocate_new_storage(new_capacity);
+        auto ptr_new_blk = allocate_new_storage(new_capacity);
 
-        copy_old_storage_to_new(p);
+        copy_old_storage_to_new(ptr_new_blk);
 
         std::destroy(begin(), end());
         ::operator delete(m_elements);
-        m_elements = p;
+        m_elements = ptr_new_blk;
         m_capacity = new_capacity;
     }
 };

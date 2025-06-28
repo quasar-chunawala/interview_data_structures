@@ -1,35 +1,29 @@
-#include <gtest/gtest.h>
 #include "vector.h"
+#include <gtest/gtest.h>
 
-struct AllocCounter
-{
+struct AllocCounter {
     static inline uint default_ctor_count{0};
     static inline uint copy_ctor_count{0};
     static inline uint move_ctor_count{0};
     static inline uint dtor_count{0};
 
-    AllocCounter()
-    {
+    AllocCounter() {
         ++default_ctor_count;
     }
 
-    AllocCounter(const AllocCounter&)
-    {
+    AllocCounter(const AllocCounter&) {
         ++copy_ctor_count;
     }
 
-    AllocCounter(AllocCounter&&) noexcept
-    {
+    AllocCounter(AllocCounter&&) noexcept {
         ++move_ctor_count;
     }
 
-    ~AllocCounter()
-    {
+    ~AllocCounter() {
         ++dtor_count;
     }
 
-    static void reset()
-    {
+    static void reset() {
         default_ctor_count = 0;
         move_ctor_count = 0;
         copy_ctor_count = 0;
@@ -37,23 +31,20 @@ struct AllocCounter
     }
 };
 
-TEST(VectorTest, DefaultConstructorTest)
-{
+TEST(VectorTest, DefaultConstructorTest) {
     dev::vector<int> v;
 
     EXPECT_EQ(v.empty(), true);
 }
 
-TEST(VectorTest, InitializerListTest)
-{
+TEST(VectorTest, InitializerListTest) {
     AllocCounter::reset();
     dev::vector<int> v{1, 2, 3, 4, 5};
 
     EXPECT_EQ(!v.empty(), true);
     EXPECT_EQ(v.size() == 5, true);
     EXPECT_EQ(v.capacity() > 0, true);
-    for (int i{0}; i < v.size(); ++i)
-    {
+    for (int i{0}; i < v.size(); ++i) {
         EXPECT_EQ(v[i], i + 1);
     }
 
@@ -65,8 +56,7 @@ TEST(VectorTest, InitializerListTest)
     EXPECT_EQ(AllocCounter::copy_ctor_count == 3, true);
 }
 
-TEST(VectorTest, ParameterizedConstructorTest)
-{
+TEST(VectorTest, ParameterizedConstructorTest) {
     AllocCounter::reset();
     dev::vector v(10, 5.5);
 
@@ -80,8 +70,7 @@ TEST(VectorTest, ParameterizedConstructorTest)
     EXPECT_EQ(AllocCounter::copy_ctor_count, 10);
 }
 
-TEST(VectorTest, CopyConstructorTest)
-{
+TEST(VectorTest, CopyConstructorTest) {
     dev::vector v1{1.0, 2.0, 3.0, 4.0, 5.0};
     dev::vector v2(v1);
 
@@ -91,8 +80,7 @@ TEST(VectorTest, CopyConstructorTest)
         EXPECT_EQ(v1[i] == v2[i], true);
 }
 
-TEST(VectorTest, MoveConstructorTest)
-{
+TEST(VectorTest, MoveConstructorTest) {
     AllocCounter::reset();
     dev::vector<int> v1{1, 2, 3};
     dev::vector<int> v2(std::move(v1));
@@ -110,21 +98,18 @@ TEST(VectorTest, MoveConstructorTest)
                    // pointers, so the copy ctor is invoked only 10 times.
 }
 
-TEST(VectorTest, CopyAssignmentTest)
-{
+TEST(VectorTest, CopyAssignmentTest) {
     dev::vector<int> v1{1, 2, 3};
     dev::vector<int> v2;
     v2 = v1;
 
     EXPECT_EQ(v1.size(), v2.size());
-    for (int i = 0; i < v1.size(); ++i)
-    {
+    for (int i = 0; i < v1.size(); ++i) {
         EXPECT_EQ(v1[i], v2[i]);
     }
 }
 
-TEST(VectorTest, MoveAssignmentTest)
-{
+TEST(VectorTest, MoveAssignmentTest) {
     dev::vector<int> v1{1, 2, 3};
     dev::vector<int> v2;
     v2 = std::move(v1);
@@ -135,8 +120,7 @@ TEST(VectorTest, MoveAssignmentTest)
     EXPECT_EQ(v2[0], 1);
 }
 
-TEST(VectorTest, AtTest)
-{
+TEST(VectorTest, AtTest) {
     dev::vector<int> v{1, 2, 3};
     EXPECT_EQ(v.at(0), 1);
     EXPECT_EQ(v.at(1), 2);
@@ -145,23 +129,20 @@ TEST(VectorTest, AtTest)
     EXPECT_THROW(v.at(3), std::out_of_range);
 }
 
-TEST(VectorTest, SubscriptOperatorTest)
-{
+TEST(VectorTest, SubscriptOperatorTest) {
     dev::vector<int> v{1, 2, 3};
     EXPECT_EQ(v[0], 1);
     EXPECT_EQ(v[1], 2);
     EXPECT_EQ(v[2], 3);
 }
 
-TEST(VectorTest, FrontAndBackTest)
-{
+TEST(VectorTest, FrontAndBackTest) {
     dev::vector<int> v{1, 2, 3};
     EXPECT_EQ(v.front(), 1);
     EXPECT_EQ(v.back(), 3);
 }
 
-TEST(VectorTest, EmptyTest)
-{
+TEST(VectorTest, EmptyTest) {
     dev::vector<int> v;
     EXPECT_EQ(v.empty(), true);
 
@@ -169,8 +150,7 @@ TEST(VectorTest, EmptyTest)
     EXPECT_EQ(v.empty(), false);
 }
 
-TEST(VectorTest, SizeAndCapacityTest)
-{
+TEST(VectorTest, SizeAndCapacityTest) {
     dev::vector<int> v;
     EXPECT_EQ(v.size(), 0);
     EXPECT_GE(v.capacity(), 0);
@@ -184,16 +164,14 @@ TEST(VectorTest, SizeAndCapacityTest)
     EXPECT_EQ(v[1], 42);
 }
 
-TEST(VectorTest, ReserveTest)
-{
+TEST(VectorTest, ReserveTest) {
     dev::vector<int> v;
     v.reserve(10);
     EXPECT_GE(v.capacity(), 10);
     EXPECT_EQ(v.size(), 0);
 }
 
-TEST(VectorTest, ResizeTest)
-{
+TEST(VectorTest, ResizeTest) {
     dev::vector<int> v{1, 2, 3};
     v.resize(5);
 
@@ -207,8 +185,7 @@ TEST(VectorTest, ResizeTest)
     EXPECT_EQ(v[1], 2);
 }
 
-TEST(VectorTest, PushBackTest)
-{
+TEST(VectorTest, PushBackTest) {
     dev::vector<int> v;
     v.push_back(1);
     v.push_back(2);
@@ -225,15 +202,13 @@ TEST(VectorTest, PushBackTest)
     // a dangling reference, if it refers to the old storage (an element of the vector itself e.g.
     // vec.back()). This test is meant for such an edge case.
     dev::vector<int> vec{1};
-    for (int i = 0; i < 10; ++i)
-    {
+    for (int i = 0; i < 10; ++i) {
         vec.push_back(vec.back());
         EXPECT_EQ(vec.back(), 1);
     }
 }
 
-TEST(VectorTest, PopBackTest)
-{
+TEST(VectorTest, PopBackTest) {
     dev::vector<int> v{1, 2, 3};
     v.pop_back();
 
@@ -242,10 +217,8 @@ TEST(VectorTest, PopBackTest)
     EXPECT_EQ(v[1], 2);
 }
 
-TEST(VectorTest, EmplaceBackTest)
-{
-    struct Point
-    {
+TEST(VectorTest, EmplaceBackTest) {
+    struct Point {
         int x, y;
         Point(int a, int b) : x(a), y(b) {}
     };
@@ -261,8 +234,7 @@ TEST(VectorTest, EmplaceBackTest)
     EXPECT_EQ(v[1].y, 4);
 }
 
-TEST(VectorTest, InsertTest)
-{
+TEST(VectorTest, InsertTest) {
     dev::vector<int> v{1, 2, 4};
     auto pos = v.insert(v.begin() + 2, 200); // overload (1)
 
@@ -271,10 +243,16 @@ TEST(VectorTest, InsertTest)
     EXPECT_EQ(v[1], 2);
     EXPECT_EQ(v[2], 200);
     EXPECT_EQ(v[3], 4);
+
+    dev::vector vec{1};
+    for (int i{0}; i < 50; ++i) {
+        vec.insert(vec.begin(), vec.back());
+        EXPECT_EQ(vec.size(), i + 2);
+        EXPECT_EQ(vec.back(), 1);
+    }
 }
 
-TEST(VectorTest, EraseTest)
-{
+TEST(VectorTest, EraseTest) {
     dev::vector<int> v{1, 2, 3, 4};
     v.erase(v.begin() + 1);
 
@@ -284,8 +262,7 @@ TEST(VectorTest, EraseTest)
     EXPECT_EQ(v[2], 4);
 }
 
-TEST(VectorTest, InsertRangeTest)
-{
+TEST(VectorTest, InsertRangeTest) {
     // Create a dev::vector and populate it with initial values
     dev::vector<int> v1{1, 2, 3, 7, 8};
 
@@ -302,8 +279,7 @@ TEST(VectorTest, InsertRangeTest)
     EXPECT_EQ(v1.size(), 8);
 
     // Check the contents of the vector after insertion
-    for (int i{0}; i < v1.size(); ++i)
-    {
+    for (int i{0}; i < v1.size(); ++i) {
         EXPECT_EQ(v1[i], i + 1);
     }
 
