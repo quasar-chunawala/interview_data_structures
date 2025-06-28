@@ -1,31 +1,25 @@
-#include <format>
 #include <concepts>
+#include <format>
 
 // Ref: C++ Memory Management by Patrice Roy
-namespace dev
-{
+namespace dev {
 
 // Default deleter - single object version
-template <typename T> struct default_deleter
-{
-    void operator()(T* raw_ptr)
-    {
+template <typename T> struct default_deleter {
+    void operator()(T* raw_ptr) {
         delete raw_ptr;
     }
 };
 
 // Default deleter - pointee is an array of objects version
-template <typename T> struct default_deleter<T[]>
-{
-    void operator()(T* raw_ptr)
-    {
+template <typename T> struct default_deleter<T[]> {
+    void operator()(T* raw_ptr) {
         delete[] raw_ptr;
     }
 };
 
 // Single object version
-template <typename T, typename D = default_deleter<T>> class unique_ptr : public D
-{
+template <typename T, typename D = default_deleter<T>> class unique_ptr : public D {
   public:
     using deleter_type = D;
 
@@ -42,63 +36,52 @@ template <typename T, typename D = default_deleter<T>> class unique_ptr : public
     // swap function
     template <typename U, typename OtherDeleter>
         requires std::is_convertible_v<U, T>
-    void swap(unique_ptr<U, OtherDeleter>& other) noexcept
-    {
+    void swap(unique_ptr<U, OtherDeleter>& other) noexcept {
         std::swap(m_underlying_ptr, other.m_underlying_ptr);
     }
 
     /* Move constructor */
     unique_ptr(unique_ptr&& other)
-        : m_underlying_ptr{std::exchange(other.m_underlying_ptr, nullptr)}
-    {
-    }
+        : m_underlying_ptr{std::exchange(other.m_underlying_ptr, nullptr)} {}
 
     /* Move assignment */
-    unique_ptr& operator=(unique_ptr&& other)
-    {
+    unique_ptr& operator=(unique_ptr&& other) {
         std::swap(m_underlying_ptr, other.m_underlying_ptr);
         return *this;
     }
 
     /* Destructor */
-    ~unique_ptr()
-    {
+    ~unique_ptr() {
         deleter_type* deleter = static_cast<deleter_type*>(this);
         (*deleter)(m_underlying_ptr);
     }
 
     // Pointer-like functions
     /* Dereferencing operator */
-    T operator*()
-    {
+    T operator*() {
         return *m_underlying_ptr;
     }
 
     /* Indirection operator*/
-    T* operator->()
-    {
+    T* operator->() {
         return m_underlying_ptr;
     }
 
     /* get() - get the raw underlying pointer*/
-    T* get() const
-    {
+    T* get() const {
         return m_underlying_ptr;
     }
 
     // Modifiers
     /* Release - returns a pointer to the managed object
        and releases the ownership*/
-    T* release()
-    {
+    T* release() {
         return std::exchange(m_underlying_ptr, nullptr);
     }
 
     /* Reset - Replaces the managed object */
-    void reset(T* other)
-    {
-        if (m_underlying_ptr != other)
-        {
+    void reset(T* other) {
+        if (m_underlying_ptr != other) {
             deleter_type* deleter = static_cast<deleter_type*>(this);
             (*deleter)(m_underlying_ptr);
 
@@ -106,40 +89,33 @@ template <typename T, typename D = default_deleter<T>> class unique_ptr : public
         }
     }
 
-    void reset(std::nullptr_t)
-    {
+    void reset(std::nullptr_t) {
         deleter_type* deleter = static_cast<deleter_type*>(this);
         (*deleter)(m_underlying_ptr);
         m_underlying_ptr = nullptr;
     }
 
-    explicit operator bool() const
-    {
+    explicit operator bool() const {
         return (m_underlying_ptr == nullptr);
     }
 
-    friend bool operator==(const unique_ptr& lhs, const unique_ptr& rhs)
-    {
+    friend bool operator==(const unique_ptr& lhs, const unique_ptr& rhs) {
         return (lhs.get() == rhs.get());
     }
 
-    friend bool operator==(const unique_ptr& lhs, std::nullptr_t rhs)
-    {
+    friend bool operator==(const unique_ptr& lhs, std::nullptr_t rhs) {
         return (lhs.m_underlying_ptr == nullptr);
     }
 
-    friend bool operator!=(unique_ptr& lhs, unique_ptr& rhs)
-    {
+    friend bool operator!=(unique_ptr& lhs, unique_ptr& rhs) {
         return !(lhs == rhs);
     }
 
-    friend bool operator!=(unique_ptr& lhs, std::nullptr_t)
-    {
+    friend bool operator!=(unique_ptr& lhs, std::nullptr_t) {
         return !(lhs == nullptr);
     }
 
-    friend void swap(unique_ptr& lhs, unique_ptr& rhs)
-    {
+    friend void swap(unique_ptr& lhs, unique_ptr& rhs) {
         lhs.swap(rhs);
     }
 
@@ -148,8 +124,7 @@ template <typename T, typename D = default_deleter<T>> class unique_ptr : public
 };
 
 /* Array version*/
-template <typename T, typename D> class unique_ptr<T[], D> : public D
-{
+template <typename T, typename D> class unique_ptr<T[], D> : public D {
   public:
     using deleter_type = D;
 
@@ -163,8 +138,7 @@ template <typename T, typename D> class unique_ptr<T[], D> : public D
     unique_ptr(T* ptr) : m_underlying_ptr{ptr} {}
 
     /* Swap function */
-    void swap(unique_ptr& other) noexcept
-    {
+    void swap(unique_ptr& other) noexcept {
         std::swap(m_underlying_ptr, other.m_underlying_ptr);
     }
 
@@ -172,58 +146,49 @@ template <typename T, typename D> class unique_ptr<T[], D> : public D
     unique_ptr(unique_ptr&& other) : m_underlying_ptr{std::move(other.m_underlying_ptr)} {}
 
     /* Move assignment */
-    unique_ptr& operator=(unique_ptr&& other)
-    {
+    unique_ptr& operator=(unique_ptr&& other) {
         std::swap(m_underlying_ptr, other.m_underlying_ptr);
         return *this;
     }
 
     /* Destructor */
-    ~unique_ptr()
-    {
+    ~unique_ptr() {
         deleter_type* deleter = static_cast<deleter_type*>(this);
         (*deleter)(m_underlying_ptr);
     }
 
     // Pointer-like functions
     /* Dereferencing operator */
-    T operator*()
-    {
+    T operator*() {
         return *m_underlying_ptr;
     }
 
     /* Indirection operator*/
-    T* operator->()
-    {
+    T* operator->() {
         return m_underlying_ptr;
     }
 
     /* IndexOf operator - provides indexed access
        to the managed array.*/
-    T operator[](std::size_t index)
-    {
+    T operator[](std::size_t index) {
         return m_underlying_ptr[index];
     }
 
     /* get() - get the raw underlying pointer*/
-    T* get() const
-    {
+    T* get() const {
         return m_underlying_ptr;
     }
 
     // Modifiers
     /* Release - returns a pointer to the managed object
        and releases the ownership*/
-    T* release()
-    {
+    T* release() {
         return std::exchange(m_underlying_ptr, nullptr);
     }
 
     /* Reset - Replaces the managed object */
-    void reset(T* other)
-    {
-        if (m_underlying_ptr != other)
-        {
+    void reset(T* other) {
+        if (m_underlying_ptr != other) {
             deleter_type* deleter = static_cast<deleter_type*>(this);
             (*deleter)(m_underlying_ptr);
 
@@ -231,40 +196,33 @@ template <typename T, typename D> class unique_ptr<T[], D> : public D
         }
     }
 
-    void reset(std::nullptr_t)
-    {
+    void reset(std::nullptr_t) {
         deleter_type* deleter = static_cast<deleter_type*>(this);
         (*deleter)(m_underlying_ptr);
         m_underlying_ptr = nullptr;
     }
 
-    explicit operator bool() const
-    {
+    explicit operator bool() const {
         return (m_underlying_ptr == nullptr);
     }
 
-    friend bool operator==(const unique_ptr& lhs, const unique_ptr& rhs)
-    {
+    friend bool operator==(const unique_ptr& lhs, const unique_ptr& rhs) {
         return (lhs.get() == rhs.get());
     }
 
-    friend bool operator==(const unique_ptr& lhs, std::nullptr_t rhs)
-    {
+    friend bool operator==(const unique_ptr& lhs, std::nullptr_t rhs) {
         return (lhs.m_underlying_ptr == nullptr);
     }
 
-    friend bool operator!=(unique_ptr& lhs, unique_ptr& rhs)
-    {
+    friend bool operator!=(unique_ptr& lhs, unique_ptr& rhs) {
         return !(lhs == rhs);
     }
 
-    friend bool operator!=(unique_ptr& lhs, std::nullptr_t)
-    {
+    friend bool operator!=(unique_ptr& lhs, std::nullptr_t) {
         return !(lhs == nullptr);
     }
 
-    friend void swap(unique_ptr& lhs, unique_ptr& rhs)
-    {
+    friend void swap(unique_ptr& lhs, unique_ptr& rhs) {
         lhs.swap(rhs);
     }
 

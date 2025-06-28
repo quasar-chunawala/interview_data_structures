@@ -3,8 +3,8 @@ IndentWidth: 4
 TabWidth: 4
 UseTab: Never
 ColumnLimit: 100
-BreakBeforeBraces: Allman
+BreakBeforeBraces: Attach
 AllowShortFunctionsOnASingleLine: Empty
-SortIncludes: false
+SortIncludes: true
 PointerAlignment: Left
 SpaceBeforeParens: ControlStatements
