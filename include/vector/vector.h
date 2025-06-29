@@ -201,12 +201,16 @@ private:
         throw;
     }
 
+    // This helper function accepts a user-supplied parameter `src`, which could be
+    // a scalar value or a sequence of values with a pair of (begin(),end()) iterators.
+    // It copy constructs T elements from `src` into raw memory underlying this vector.
     template <typename U>
     void copy_helper(const U& src, std::optional<size_t> opt_size)
     {
         auto i{begin()};
         if constexpr (std::is_same_v<U, T>)
         {
+            // `src` is a scalar value
             try
             {
                 for (; i != begin() + opt_size.value(); ++i)
@@ -218,6 +222,7 @@ private:
         }
         else
         {
+            // `src` is a range
             auto j{src.begin()};
             try
             {
@@ -260,6 +265,8 @@ private:
         }
     }
 
+    // Helper function to copy/move-construct `value`
+    // into raw-memory pointed to by `ptr`
     template <typename U>
         requires std::is_convertible_v<U, T>
     void construct_at_addr(pointer ptr, U&& value)
