@@ -300,9 +300,11 @@ public:
      * @brief Index of operator. Provides access to the
      * managed array.
      */
-    [[nodiscard]] T& operator[](std::size_t index)
+    template <typename Self>
+    [[nodiscard]] T& operator[](this Self&& self, std::size_t index)
     {
-        return m_underlying_ptr[index];
+        static_assert(std::is_same_v<std::remove_cvref_t<Self>, unique_ptr<T[], D>>);
+        return self.m_underlying_ptr[index];
     }
 
 
