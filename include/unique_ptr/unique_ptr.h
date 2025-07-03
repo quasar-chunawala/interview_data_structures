@@ -1,27 +1,42 @@
 #include <concepts>
 #include <format>
+#include <utility>
 
 // Ref: C++ Memory Management by Patrice Roy
 namespace dev
 {
 
-// Default deleter - single object version
+/**
+ * @brief The default deleter for the managed object
+ */
 template <typename T>
 struct default_deleter
 {
+    /**
+     * @brief Overloaded function call operator that calls delete on the @a raw_ptr
+     */
     void operator()(T* raw_ptr)
     {
         delete raw_ptr;
     }
+
+    friend void swap(default_deleter& lhs, default_deleter& rhs)
+    {
+    }
 };
 
-// Default deleter - pointee is an array of objects version
+/**
+ * @brief Default deleter when the pointee is an array of objects
+ */
 template <typename T>
 struct default_deleter<T[]>
 {
     void operator()(T* raw_ptr)
     {
         delete[] raw_ptr;
+    }
+    friend void swap(default_deleter& lhs, default_deleter& rhs)
+    {
     }
 };
 
@@ -32,7 +47,9 @@ class unique_ptr : public D
 public:
     using deleter_type = D;
 
-    // Default c'tor
+    /**
+     * @brief Default constructor
+     */
     unique_ptr() : m_underlying_ptr{nullptr}
     {
     }
@@ -41,97 +58,139 @@ public:
     unique_ptr(const unique_ptr&)            = delete;
     unique_ptr& operator=(const unique_ptr&) = delete;
 
-    // Parameteric constructor
-    unique_ptr(T* ptr) : m_underlying_ptr{ptr}
+    /**
+     * @brief Constructor that takes a raw pointer
+     * @param ptr Pointer to the managed resource
+     */
+    explicit unique_ptr(T* ptr) : m_underlying_ptr{ptr}
     {
     }
 
-    // swap function
-    template <typename U, typename OtherDeleter>
-        requires std::is_convertible_v<U, T>
-    void swap(unique_ptr<U, OtherDeleter>& other) noexcept
+    /**
+     * @brief Swaps the two smart pointer objects member-by-member.
+     * @param other The other unique pointer instance
+     */
+    void swap(unique_ptr& other) noexcept
     {
         std::swap(m_underlying_ptr, other.m_underlying_ptr);
+        // To keep our code generic, we also swap the deleter, since
+        // the deleter can be stateful. Consider for example:
+        // ArenaAllocator arena{4096};
+        // std::unique_ptr<Foo, ArenaAllocationDeleter{&arena}> fooPtr;
+        // When we swap two unique pointers, you expect the point-to-pool or arena
+        // to be swapped as well.
+        deleter_type* this_deleter  = static_cast<deleter_type*>(this);
+        deleter_type* other_deleter = static_cast<deleter_type*>(&other);
+        std::swap(this_deleter, other_deleter);
     }
 
-    /* Move constructor */
-    unique_ptr(unique_ptr&& other) noexcept : m_underlying_ptr{std::exchange(other.m_underlying_ptr, nullptr)}
+    /**
+     * @brief Move constructor
+     */
+    unique_ptr(unique_ptr&& other) noexcept :
+        m_underlying_ptr{std::exchange(other.m_underlying_ptr, nullptr)},
+        deleter_type{std::move(static_cast<deleter_type>(other))}
     {
     }
 
-    /* Move assignment */
+    /**
+     * @brief Move assignment operator
+     */
     unique_ptr& operator=(unique_ptr&& other)
     {
-        std::swap(m_underlying_ptr, other.m_underlying_ptr);
+        unique_ptr(std::move(other)).swap(*this);
         return *this;
     }
 
-    // Destructor
+    /**
+     * @brief Destructor
+     */
     ~unique_ptr()
     {
         deleter_type* deleter = static_cast<deleter_type*>(this);
         (*deleter)(m_underlying_ptr);
     }
 
-    // Pointer-like functions
-    // Dereferencing functions
+    /**
+     * @brief Dererencing operator
+     */
     [[nodiscard]] T operator*()
     {
         return *m_underlying_ptr;
     }
 
-    // Indirection operator
+    /**
+     * @brief Indirection operator
+     */
     [[nodiscard]] T* operator->()
     {
         return m_underlying_ptr;
     }
 
-    // get() - get the raw underlying pointer
+    /**
+     * @brief Get the underlying raw pointer.
+     */
     [[nodiscard]] T* get() const
     {
         return m_underlying_ptr;
     }
 
     // Modifiers
-    // Release - returns a pointer to the managed object
-    // and releases the ownership*/
+    /**
+     * @brief Releases the underlying managed resource 
+     */
     [[nodiscard]] T* release()
     {
         return std::exchange(m_underlying_ptr, nullptr);
     }
 
-    // Reset - Replaces the managed object
+    /**
+     * @brief Replaces the managed object
+     */
     void reset(T* other)
     {
         if (m_underlying_ptr != other)
         {
-            deleter_type* deleter = static_cast<deleter_type*>(this);
-            (*deleter)(m_underlying_ptr);
-
+            (*static_cast<deleter_type*>(this))(m_underlying_ptr);
             m_underlying_ptr = other;
         }
     }
 
+    /**
+     * @brief Implementation of operator bool()
+     */
     explicit operator bool() const
     {
-        return (m_underlying_ptr == nullptr);
+        return m_underlying_ptr == nullptr;
     }
 
+    /**
+     * @brief Implementation of the spaceship operator
+     */
     friend auto operator<=>(const unique_ptr& lhs, const unique_ptr& rhs)
     {
-        return (lhs.get() <=> rhs.get());
+        return lhs.get() <=> rhs.get();
     }
 
+    /**
+     * @brief Compare a unique_ptr will nullptr
+     */
     friend bool operator==(const unique_ptr& lhs, std::nullptr_t)
     {
         return lhs.get() == nullptr;
     }
 
+    /**
+     * @brief Compare a nullptr will unique_ptr
+     */
     friend bool operator==(std::nullptr_t, const unique_ptr& rhs)
     {
         return rhs.get() == nullptr;
     }
 
+    /**
+     * @brief std::swap called on two unique_ptr objects
+     */
     friend void swap(unique_ptr& lhs, unique_ptr& rhs) noexcept
     {
         lhs.swap(rhs);
@@ -148,118 +207,160 @@ class unique_ptr<T[], D> : public D
 public:
     using deleter_type = D;
 
-    // Default c'tor
+    /**
+     * @brief Default constructor
+     */
     unique_ptr() : m_underlying_ptr{nullptr}
     {
     }
 
+    // Copy c'tor and copy assignment are delete'd.
     unique_ptr(const unique_ptr&)            = delete;
     unique_ptr& operator=(const unique_ptr&) = delete;
 
-    // Parameteric constructor
-    unique_ptr(T* ptr) : m_underlying_ptr{ptr}
+    /**
+     * @brief Constructor that takes a raw pointer
+     * @param ptr Pointer to the managed resource
+     */
+    explicit unique_ptr(T* ptr) : m_underlying_ptr{ptr}
     {
     }
 
-    // Swap function
+    /**
+     * @brief Swaps the two smart pointer objects member-by-member.
+     * @param other The other unique pointer instance
+     */
     void swap(unique_ptr& other) noexcept
     {
         std::swap(m_underlying_ptr, other.m_underlying_ptr);
+        // To keep our code generic, we also swap the deleter, since
+        // the deleter can be stateful. Consider for example:
+        // ArenaAllocator arena{4096};
+        // std::unique_ptr<Foo, ArenaAllocationDeleter{&arena}> fooPtr;
+        // When we swap two unique pointers, you expect the point-to-pool or arena
+        // to be swapped as well.
+        deleter_type* this_deleter  = static_cast<deleter_type*>(this);
+        deleter_type* other_deleter = static_cast<deleter_type*>(&other);
+        std::swap(this_deleter, other_deleter);
     }
 
-    // Move constructor
-    unique_ptr(unique_ptr&& other) noexcept : m_underlying_ptr{std::move(other.m_underlying_ptr)}
+    /**
+     * @brief Move constructor
+     */
+    unique_ptr(unique_ptr&& other) noexcept :
+        m_underlying_ptr{std::exchange(other.m_underlying_ptr, nullptr)},
+        deleter_type{std::move(static_cast<deleter_type>(other))}
     {
     }
 
-    // Move assignment
-    unique_ptr& operator=(unique_ptr&& other) noexcept
+    /**
+     * @brief Move assignment operator
+     */
+    unique_ptr& operator=(unique_ptr&& other)
     {
-        std::swap(m_underlying_ptr, other.m_underlying_ptr);
+        unique_ptr(std::move(other)).swap(*this);
         return *this;
     }
 
-    /* Destructor */
+    /**
+     * @brief Destructor
+     */
     ~unique_ptr()
     {
         deleter_type* deleter = static_cast<deleter_type*>(this);
         (*deleter)(m_underlying_ptr);
     }
 
-    // Pointer-like functions
-    /* Dereferencing operator */
-    [[nodiscard]] T operator*()
+    /**
+     * @brief Dererencing operator
+     */
+    [[nodiscard]] T& operator*()
     {
         return *m_underlying_ptr;
     }
 
-    /* Indirection operator*/
+    /**
+     * @brief Indirection operator
+     */
     [[nodiscard]] T* operator->()
     {
         return m_underlying_ptr;
     }
 
-    // IndexOf operator - provides indexed access
-    //   to the managed array.
-    [[nodiscard]] T operator[](std::size_t index)
-    {
-        return m_underlying_ptr[index];
-    }
-
-    /* get() - get the raw underlying pointer*/
+    /**
+     * @brief Get the underlying raw pointer.
+     */
     [[nodiscard]] T* get() const
     {
         return m_underlying_ptr;
     }
 
+    /**
+     * @brief Index of operator. Provides access to the
+     * managed array.
+     */
+    [[nodiscard]] T& operator[](std::size_t index)
+    {
+        return m_underlying_ptr[index];
+    }
+
+
     // Modifiers
-    // Release - returns a pointer to the managed object
-    // and releases the ownership
+    /**
+     * @brief Releases the underlying managed resource 
+     */
     [[nodiscard]] T* release()
     {
         return std::exchange(m_underlying_ptr, nullptr);
     }
 
-    // Reset - Replaces the managed object
+    /**
+     * @brief Replaces the managed object
+     */
     void reset(T* other)
     {
         if (m_underlying_ptr != other)
         {
-            deleter_type* deleter = static_cast<deleter_type*>(this);
-            (*deleter)(m_underlying_ptr);
-
+            (*static_cast<deleter_type*>(this))(m_underlying_ptr);
             m_underlying_ptr = other;
         }
     }
 
-    void reset(std::nullptr_t)
-    {
-        deleter_type* deleter = static_cast<deleter_type*>(this);
-        (*deleter)(m_underlying_ptr);
-        m_underlying_ptr = nullptr;
-    }
-
+    /**
+     * @brief Implementation of operator bool()
+     */
     explicit operator bool() const
     {
-        return (m_underlying_ptr == nullptr);
+        return m_underlying_ptr == nullptr;
     }
 
+    /**
+     * @brief Implementation of the spaceship operator
+     */
     friend auto operator<=>(const unique_ptr& lhs, const unique_ptr& rhs)
     {
-        return (lhs.get() <=> rhs.get());
+        return lhs.get() <=> rhs.get();
     }
 
+    /**
+     * @brief Compare a unique_ptr will nullptr
+     */
     friend bool operator==(const unique_ptr& lhs, std::nullptr_t)
     {
         return lhs.get() == nullptr;
     }
 
+    /**
+     * @brief Compare a nullptr will unique_ptr
+     */
     friend bool operator==(std::nullptr_t, const unique_ptr& rhs)
     {
         return rhs.get() == nullptr;
     }
 
-
+    /**
+     * @brief std::swap called on two unique_ptr objects
+     */
     friend void swap(unique_ptr& lhs, unique_ptr& rhs) noexcept
     {
         lhs.swap(rhs);

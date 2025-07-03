@@ -48,10 +48,11 @@ BreakInheritanceList: AfterColon
 BreakStringLiterals: true
 
 # Initializers & arguments
+BasedOnStyle: Google
 BinPackArguments: false
 BinPackParameters: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
-ConstructorInitializerIndentWidth: 0
+ConstructorInitializerIndentWidth: 4
 Cpp11BracedListStyle: true
 
 # Braces

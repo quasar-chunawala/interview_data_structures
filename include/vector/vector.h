@@ -299,14 +299,23 @@ public:
     }
 
     // Constructors
-    // default constructor
+    /**
+     * @brief Creates a vector with no elements.
+     */
     vector() = default;
 
-    // parametrized constructor
+    /**
+     * @brief Creates a vector with @a n copies of an element.
+     * @param n Number of elements to initially create. 
+     * @param init An element to copy.
+     * 
+     * This function fills a %vector with @a n copies 
+     * of the given @a value.
+     */
     vector(size_type n, const_reference init) :
-    m_elements(static_cast<pointer>(::operator new(n * sizeof(value_type)))),
-    m_size{0},
-    m_capacity{n}
+        m_elements(static_cast<pointer>(::operator new(n * sizeof(value_type)))),
+        m_size{0},
+        m_capacity{n}
     {
         copy_helper(init, n);
         m_size = n;
@@ -314,9 +323,9 @@ public:
 
     // copy constructor
     explicit vector(const vector& other) :
-    m_elements(static_cast<pointer>(::operator new(other.size() * sizeof(value_type)))),
-    m_size{other.m_size},
-    m_capacity{other.m_size}
+        m_elements(static_cast<pointer>(::operator new(other.size() * sizeof(value_type)))),
+        m_size{other.m_size},
+        m_capacity{other.m_size}
     {
         copy_helper(other, std::nullopt);
     }
@@ -339,9 +348,9 @@ public:
 
     // move constructor
     vector(vector&& other) noexcept :
-    m_elements(std::exchange(other.m_elements, nullptr)),
-    m_capacity(std::exchange(other.m_capacity, 0)),
-    m_size(std::exchange(other.m_size, 0))
+        m_elements(std::exchange(other.m_elements, nullptr)),
+        m_capacity(std::exchange(other.m_capacity, 0)),
+        m_size(std::exchange(other.m_size, 0))
     {
     }
 
@@ -354,9 +363,9 @@ public:
 
     // constructor that accepts a std::initializer_list<T>{}
     vector(std::initializer_list<T> src) :
-    m_elements{static_cast<pointer>(::operator new(src.size() * sizeof(value_type)))},
-    m_size{src.size()},
-    m_capacity{src.size()}
+        m_elements{static_cast<pointer>(::operator new(src.size() * sizeof(value_type)))},
+        m_size{src.size()},
+        m_capacity{src.size()}
     {
         copy_helper(src, std::nullopt);
     }
@@ -514,7 +523,7 @@ public:
     iterator insert(const_iterator position, U&& value)
     {
         // If a reallocation is triggered, all iterators are invalidated
-        // and additionally value would also become a dangling reference,
+        // and additionally `value` would also become a dangling reference,
         // if it refers to an existing element of the vector.
         size_type index = std::distance(begin(), iterator(position));
         auto      pos_  = iterator(position);
