@@ -730,7 +730,7 @@ class vector
      * @throws Any exception thrown by the copy or move constructor of the element type.
      */
     template<class InputIt>
-    iterator insert(const_iterator position, InputIt first, InputIt last);
+    iterator insert(const_iterator position, InputIt first, InputIt last)
     {
         auto index = std::distance(begin(), iterator(position));
 
