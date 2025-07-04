@@ -709,11 +709,28 @@ class vector
         return pos_;
     }
 
-    // We should be able to use pair of iterators from any container
-    // as a source of values to insert, which is a very useful
-    // property indeed.
+    /**
+     * @brief Inserts a range of elements into the vector before the specified position.
+     *
+     * This function inserts elements from the range `[first, last)` into the vector
+     * before the location specified by `position`. If the range cannot fit into the
+     * remaining capacity, a reallocation is triggered.
+     *
+     * @tparam InputIt The type of the input iterator. Must satisfy the requirements
+     * of `std::input_iterator`.
+     * @param position The position before which the elements will be inserted.
+     * @param first The beginning of the range to insert.
+     * @param last The end of the range to insert.
+     * @return An iterator pointing to the first of the newly inserted elements.
+     *
+     * @note If reallocation occurs, all iterators, references, and pointers to
+     * elements in the vector are invalidated.
+     *
+     * @throws std::bad_alloc If memory allocation fails during reallocation.
+     * @throws Any exception thrown by the copy or move constructor of the element type.
+     */
     template<class InputIt>
-    iterator insert(const_iterator position, InputIt first, InputIt last)
+    iterator insert(const_iterator position, InputIt first, InputIt last);
     {
         auto index = std::distance(begin(), iterator(position));
 
