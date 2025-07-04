@@ -10,7 +10,7 @@
 #include <type_traits>
 #include <utility>
 
-// Compiler Explorer: https://godbolt.org/z/efKWcGsKx
+// Compiler Explorer: https://godbolt.org/z/z5oYqjdv5
 namespace dev {
 
 /**
