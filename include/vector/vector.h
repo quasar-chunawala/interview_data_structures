@@ -727,7 +727,7 @@ class vector
      * elements in the vector are invalidated.
      *
      * @throws std::bad_alloc If memory allocation fails during reallocation.
-     * @throws Any exception thrown by the copy or move constructor of the element type.
+     * @throws Any exception thrown by the copy c'tor of the element type T.
      */
     template<class InputIt>
     iterator insert(const_iterator position, InputIt first, InputIt last)
@@ -820,6 +820,10 @@ class vector
         m_size += src_len;
         return pos_;
     }
+
+    // TODO: Add an implementation of insert(const_iterator position, InputIt first,
+    // InputIt last) which handles the special case where [first,last) are a subrange in
+    // %this vector.
 
     template<typename It>
         requires(std::is_same_v<It, iterator> || std::is_same_v<It, const_iterator>)
