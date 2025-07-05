@@ -468,6 +468,12 @@ class vector
     }
 
     /**
+     * @brief Returns a read-only iterator to the first element
+     * of the vector.
+     */
+    const_iterator cbegin() const noexcept { return const_iterator(m_elements); }
+
+    /**
      * @brief Returns a read/write iterator that points to one past the last
      * element of the vector.
      */
@@ -478,6 +484,12 @@ class vector
         else
             return iterator(self.m_elements + self.m_size);
     }
+
+    /**
+     * @brief Returns a read-only iterator to one-past-the-last element
+     * of the vector.
+     */
+    const_iterator cend() const noexcept { return const_iterator(m_elements + m_size); }
 
     /**
      * @brief Read/write reference to the data at index n
