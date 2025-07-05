@@ -447,6 +447,44 @@ class vector
     }
 
     /**
+     * @brief Assigns an initializer list to a vector.
+     * @note All iterators including the end() iterator and any references
+     * to vector elements are invalidate.
+     */
+    vector& operator=(std::initializer_list<T> src)
+    {
+        return assign(src.begin(), src.end());
+    }
+
+    /**
+     * @brief Assigns a range to a vector.
+     * @note All iterators including the end() iterator and any references
+     * to vector elements are invalidate.
+     */
+    template<typename InputIt>
+    vector& assign(InputIt first, InputIt last)
+    {
+        size_t n = std::distance(first, last);
+        if (n > capacity()) {
+            // Triggers Reallocation
+            pointer p = allocate_aux(n);
+            iterator d_first = iterator(p);
+            std::uninitialized_copy(first, last, d_first);
+
+            std::destroy(begin(), end());
+            ::operator delete(m_elements);
+            m_elements = p;
+            m_size = n;
+            m_capacity = n;
+        } else {
+            std::destroy(begin(), end());
+            std::uninitialized_copy(first, last, begin());
+            m_size = n;
+        }
+        return *this;
+    }
+
+    /**
      * @brief Destructor
      */
     ~vector()

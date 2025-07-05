@@ -427,3 +427,51 @@ TEST(VectorTest, InsertInitializerListTest)
     EXPECT_EQ(v[5], 6);
     EXPECT_EQ(v[6], 7);
 }
+
+TEST(VectorTest, AssignTest)
+{
+    // Test assigning from a range of integers
+    dev::vector<int> v;
+    dev::vector<int> source{ 1, 2, 3, 4, 5 };
+
+    v.assign(source.begin(), source.end());
+
+    // Check the size and contents of the vector
+    EXPECT_EQ(v.size(), 5);
+    EXPECT_EQ(v.capacity() >= 5, true);
+    EXPECT_EQ(v[0], 1);
+    EXPECT_EQ(v[1], 2);
+    EXPECT_EQ(v[2], 3);
+    EXPECT_EQ(v[3], 4);
+    EXPECT_EQ(v[4], 5);
+
+    // Test assigning a smaller range
+    dev::vector<int> smaller_source{ 10, 20 };
+    v.assign(smaller_source.begin(), smaller_source.end());
+
+    // Check the size and contents of the vector
+    EXPECT_EQ(v.size(), 2);
+    EXPECT_EQ(v[0], 10);
+    EXPECT_EQ(v[1], 20);
+
+    // Test assigning a larger range
+    dev::vector<int> larger_source{ 100, 200, 300, 400, 500, 600 };
+    v.assign(larger_source.begin(), larger_source.end());
+
+    // Check the size and contents of the vector
+    EXPECT_EQ(v.size(), 6);
+    EXPECT_EQ(v[0], 100);
+    EXPECT_EQ(v[1], 200);
+    EXPECT_EQ(v[2], 300);
+    EXPECT_EQ(v[3], 400);
+    EXPECT_EQ(v[4], 500);
+    EXPECT_EQ(v[5], 600);
+
+    // Test assigning an empty range
+    dev::vector<int> empty_source;
+    v.assign(empty_source.begin(), empty_source.end());
+
+    // Check the size of the vector
+    EXPECT_EQ(v.size(), 0);
+    EXPECT_EQ(v.empty(), true);
+}
