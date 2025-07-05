@@ -820,8 +820,6 @@ class vector
      * @brief Inserts elements from the initializer_list @a ilist before
      * @a position.
      */
-    // FIXME: This implementation should be more efficient. If T is
-    // move-constructible, move elements from %ilist instead of copy.
     iterator insert(const_iterator position, std::initializer_list<T> ilist)
     {
         return insert(position, ilist.begin(), ilist.end());
