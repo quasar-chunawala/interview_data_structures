@@ -3,38 +3,55 @@
 
 struct AllocCounter
 {
-    static inline uint default_ctor_count{0};
-    static inline uint copy_ctor_count{0};
-    static inline uint move_ctor_count{0};
-    static inline uint dtor_count{0};
+    int value;
+    static inline uint default_ctor_count{ 0 };
+    static inline uint copy_ctor_count{ 0 };
+    static inline uint move_ctor_count{ 0 };
+    static inline uint copy_assignment_count{ 0 };
+    static inline uint dtor_count{ 0 };
 
     AllocCounter()
+      : value{ 0 }
     {
         ++default_ctor_count;
     }
-
-    AllocCounter(const AllocCounter&)
+    AllocCounter(const AllocCounter& other)
+      : value(other.value)
     {
         ++copy_ctor_count;
     }
 
-    AllocCounter(AllocCounter&&) noexcept
+    AllocCounter& operator=(const AllocCounter& other)
+    {
+        AllocCounter(other).swap(*this);
+        ++copy_assignment_count;
+        return *this;
+    }
+
+    void swap(AllocCounter& other) noexcept { std::swap(value, other.value); }
+
+    AllocCounter(AllocCounter&& other) noexcept
+      : value{ other.value }
     {
         ++move_ctor_count;
     }
 
-    ~AllocCounter()
+    AllocCounter(int val)
+      : value{ val }
     {
-        ++dtor_count;
     }
+
+    ~AllocCounter() { ++dtor_count; }
 
     static void reset()
     {
         default_ctor_count = 0;
-        move_ctor_count    = 0;
-        copy_ctor_count    = 0;
-        dtor_count         = 0;
+        move_ctor_count = 0;
+        copy_ctor_count = 0;
+        dtor_count = 0;
     }
+
+    bool operator==(const AllocCounter& other) const { return value == other.value; }
 };
 
 TEST(VectorTest, DefaultConstructorTest)
@@ -47,17 +64,16 @@ TEST(VectorTest, DefaultConstructorTest)
 TEST(VectorTest, InitializerListTest)
 {
     AllocCounter::reset();
-    dev::vector<int> v{1, 2, 3, 4, 5};
+    dev::vector<int> v{ 1, 2, 3, 4, 5 };
 
     EXPECT_EQ(!v.empty(), true);
     EXPECT_EQ(v.size() == 5, true);
     EXPECT_EQ(v.capacity() > 0, true);
-    for (int i{0}; i < v.size(); ++i)
-    {
+    for (int i{ 0 }; i < v.size(); ++i) {
         EXPECT_EQ(v[i], i + 1);
     }
 
-    dev::vector vec{AllocCounter(), AllocCounter(), AllocCounter()};
+    dev::vector vec{ AllocCounter(), AllocCounter(), AllocCounter() };
 
     EXPECT_EQ(!vec.empty(), true);
     EXPECT_EQ(vec.size() == 3, true);
@@ -75,26 +91,26 @@ TEST(VectorTest, ParameterizedConstructorTest)
 
     AllocCounter::reset();
     AllocCounter allocCounter;
-    dev::vector  vec(10, allocCounter);
+    dev::vector vec(10, allocCounter);
     EXPECT_EQ(AllocCounter::default_ctor_count, 1);
     EXPECT_EQ(AllocCounter::copy_ctor_count, 10);
 }
 
 TEST(VectorTest, CopyConstructorTest)
 {
-    dev::vector v1{1.0, 2.0, 3.0, 4.0, 5.0};
+    dev::vector v1{ 1.0, 2.0, 3.0, 4.0, 5.0 };
     dev::vector v2(v1);
 
     EXPECT_EQ(v1.size() == v2.size(), true);
 
-    for (int i{0}; i < v1.size(); ++i)
+    for (int i{ 0 }; i < v1.size(); ++i)
         EXPECT_EQ(v1[i] == v2[i], true);
 }
 
 TEST(VectorTest, MoveConstructorTest)
 {
     AllocCounter::reset();
-    dev::vector<int> v1{1, 2, 3};
+    dev::vector<int> v1{ 1, 2, 3 };
     dev::vector<int> v2(std::move(v1));
 
     EXPECT_EQ(v1.size(), 0);
@@ -112,20 +128,19 @@ TEST(VectorTest, MoveConstructorTest)
 
 TEST(VectorTest, CopyAssignmentTest)
 {
-    dev::vector<int> v1{1, 2, 3};
+    dev::vector<int> v1{ 1, 2, 3 };
     dev::vector<int> v2;
     v2 = v1;
 
     EXPECT_EQ(v1.size(), v2.size());
-    for (int i = 0; i < v1.size(); ++i)
-    {
+    for (int i = 0; i < v1.size(); ++i) {
         EXPECT_EQ(v1[i], v2[i]);
     }
 }
 
 TEST(VectorTest, MoveAssignmentTest)
 {
-    dev::vector<int> v1{1, 2, 3};
+    dev::vector<int> v1{ 1, 2, 3 };
     dev::vector<int> v2;
     v2 = std::move(v1);
 
@@ -137,7 +152,7 @@ TEST(VectorTest, MoveAssignmentTest)
 
 TEST(VectorTest, AtTest)
 {
-    dev::vector<int> v{1, 2, 3};
+    dev::vector<int> v{ 1, 2, 3 };
     EXPECT_EQ(v.at(0), 1);
     EXPECT_EQ(v.at(1), 2);
     EXPECT_EQ(v.at(2), 3);
@@ -147,7 +162,7 @@ TEST(VectorTest, AtTest)
 
 TEST(VectorTest, SubscriptOperatorTest)
 {
-    dev::vector<int> v{1, 2, 3};
+    dev::vector<int> v{ 1, 2, 3 };
     EXPECT_EQ(v[0], 1);
     EXPECT_EQ(v[1], 2);
     EXPECT_EQ(v[2], 3);
@@ -155,7 +170,7 @@ TEST(VectorTest, SubscriptOperatorTest)
 
 TEST(VectorTest, FrontAndBackTest)
 {
-    dev::vector<int> v{1, 2, 3};
+    dev::vector<int> v{ 1, 2, 3 };
     EXPECT_EQ(v.front(), 1);
     EXPECT_EQ(v.back(), 3);
 }
@@ -194,7 +209,7 @@ TEST(VectorTest, ReserveTest)
 
 TEST(VectorTest, ResizeTest)
 {
-    dev::vector<int> v{1, 2, 3};
+    dev::vector<int> v{ 1, 2, 3 };
     v.resize(5);
 
     EXPECT_EQ(v.size(), 5);
@@ -222,11 +237,10 @@ TEST(VectorTest, PushBackTest)
     // The design of push_back/insert is slightly hard to get right.
     // If the vector is full and you reallocate(grow) the vector right
     // in the beginning, then value in vec.push_back(value) becomes
-    // a dangling reference, if it refers to the old storage (an element of the vector itself e.g.
-    // vec.back()). This test is meant for such an edge case.
-    dev::vector<int> vec{1};
-    for (int i = 0; i < 10; ++i)
-    {
+    // a dangling reference, if it refers to the old storage (an element of the vector
+    // itself e.g. vec.back()). This test is meant for such an edge case.
+    dev::vector<int> vec{ 1 };
+    for (int i = 0; i < 10; ++i) {
         vec.push_back(vec.back());
         EXPECT_EQ(vec.back(), 1);
     }
@@ -234,7 +248,7 @@ TEST(VectorTest, PushBackTest)
 
 TEST(VectorTest, PopBackTest)
 {
-    dev::vector<int> v{1, 2, 3};
+    dev::vector<int> v{ 1, 2, 3 };
     v.pop_back();
 
     EXPECT_EQ(v.size(), 2);
@@ -247,7 +261,9 @@ TEST(VectorTest, EmplaceBackTest)
     struct Point
     {
         int x, y;
-        Point(int a, int b) : x(a), y(b)
+        Point(int a, int b)
+          : x(a)
+          , y(b)
         {
         }
     };
@@ -265,8 +281,8 @@ TEST(VectorTest, EmplaceBackTest)
 
 TEST(VectorTest, InsertTest)
 {
-    dev::vector<int> v{1, 2, 4};
-    auto             pos = v.insert(v.begin() + 2, 200); // overload (1)
+    dev::vector<int> v{ 1, 2, 4 };
+    auto pos = v.insert(v.begin() + 2, 200); // overload (1)
 
     EXPECT_EQ(v.size(), 4);
     EXPECT_EQ(v[0], 1);
@@ -274,9 +290,8 @@ TEST(VectorTest, InsertTest)
     EXPECT_EQ(v[2], 200);
     EXPECT_EQ(v[3], 4);
 
-    dev::vector vec{1};
-    for (int i{0}; i < 50; ++i)
-    {
+    dev::vector vec{ 1 };
+    for (int i{ 0 }; i < 50; ++i) {
         vec.insert(vec.begin(), vec.back());
         EXPECT_EQ(vec.size(), i + 2);
         EXPECT_EQ(vec.back(), 1);
@@ -285,7 +300,7 @@ TEST(VectorTest, InsertTest)
 
 TEST(VectorTest, EraseTest)
 {
-    dev::vector<int> v{1, 2, 3, 4};
+    dev::vector<int> v{ 1, 2, 3, 4 };
     v.erase(v.begin() + 1);
 
     EXPECT_EQ(v.size(), 3);
@@ -297,10 +312,10 @@ TEST(VectorTest, EraseTest)
 TEST(VectorTest, InsertRangeTest)
 {
     // Create a dev::vector and populate it with initial values
-    dev::vector<int> v1{1, 2, 3, 7, 8};
+    dev::vector<int> v1{ 1, 2, 3, 7, 8 };
 
     // Create a standard vector to use as the source range
-    std::vector<int> source{4, 5, 6};
+    std::vector<int> source{ 4, 5, 6 };
 
     // Insert the range [source.begin(), source.end()) into v at position v.begin() + 3
     auto pos = v1.insert(v1.begin() + 3, source.begin(), source.end());
@@ -312,13 +327,12 @@ TEST(VectorTest, InsertRangeTest)
     EXPECT_EQ(v1.size(), 8);
 
     // Check the contents of the vector after insertion
-    for (int i{0}; i < v1.size(); ++i)
-    {
+    for (int i{ 0 }; i < v1.size(); ++i) {
         EXPECT_EQ(v1[i], i + 1);
     }
 
-    dev::vector<int> v2{17, 5, 28};
-    dev::vector<int> rng2{42, 3, 16, 4};
+    dev::vector<int> v2{ 17, 5, 28 };
+    dev::vector<int> rng2{ 42, 3, 16, 4 };
 
     auto idx = v2.insert(v2.begin(), rng2.begin(), rng2.end());
     EXPECT_EQ(v2[0], 42);
@@ -329,12 +343,87 @@ TEST(VectorTest, InsertRangeTest)
     EXPECT_EQ(v2[5], 5);
     EXPECT_EQ(v2[6], 28);
 
-    dev::vector v3{1, 3, 5, 7};
-    dev::vector rng3{4, 5, 6};
+    dev::vector v3{ 1, 3, 5, 7 };
+    dev::vector rng3{ 4, 5, 6 };
     v3.insert(v3.begin(), rng3.begin(), rng3.end());
     EXPECT_EQ(v3[0], 4);
     EXPECT_EQ(v3[1], 5);
     EXPECT_EQ(v3[2], 6);
     EXPECT_EQ(v3[3], 1);
     EXPECT_EQ(v3[4], 3);
+
+    EXPECT_EQ(rng3.size(), 3); // Check the size of the source range
+}
+
+TEST(VectorTest, InsertRangeClassTypeTest)
+{
+    static_assert(std::is_nothrow_move_constructible_v<AllocCounter>);
+    // Reset counters
+    AllocCounter::reset();
+
+    // Create a dev::vector of AllocCounter
+    dev::vector<AllocCounter> v1{
+        AllocCounter(1), AllocCounter(2), AllocCounter(6), AllocCounter(7)
+    };
+
+    // Create a source range of TestObject
+    std::vector<AllocCounter> source{ AllocCounter(3), AllocCounter(4), AllocCounter(5) };
+
+    // Insert the range [source.begin(), source.end()) into v1 at position v1.begin() + 2
+    auto pos = v1.insert(v1.begin() + 2, source.begin(), source.end());
+
+    // Check that the returned iterator points to the first inserted element
+    EXPECT_EQ(pos->value, 3);
+
+    // Check the size of the vector after insertion
+    EXPECT_EQ(v1.size(), 7);
+
+    // Check the contents of the vector after insertion
+    EXPECT_EQ(v1[0].value, 1);
+    EXPECT_EQ(v1[1].value, 2);
+    EXPECT_EQ(v1[2].value, 3);
+    EXPECT_EQ(v1[3].value, 4);
+    EXPECT_EQ(v1[4].value, 5);
+    EXPECT_EQ(v1[5].value, 6);
+    EXPECT_EQ(v1[6].value, 7);
+
+    EXPECT_EQ(source.size(), 3);
+    EXPECT_EQ(source[0].value, 3);
+    EXPECT_EQ(source[1].value, 4);
+    EXPECT_EQ(source[2].value, 5);
+
+    GTEST_LOG_(INFO) << "\n"
+                     << "AllocCounter::copy_ctor_count = "
+                     << AllocCounter::copy_ctor_count;
+    GTEST_LOG_(INFO) << "\n"
+                     << "AllocCounter::default_ctor_count = "
+                     << AllocCounter::default_ctor_count;
+    GTEST_LOG_(INFO) << "\n"
+                     << "AllocCounter::move_ctor_count = "
+                     << AllocCounter::move_ctor_count;
+    GTEST_LOG_(INFO) << "\n" << "AllocCounter::dtor_count = " << AllocCounter::dtor_count;
+}
+
+TEST(VectorTest, InsertInitializerListTest)
+{
+    // Create a vector and populate it with initial values
+    dev::vector<int> v{ 1, 2, 6, 7 };
+
+    // Insert an initializer list at position v.begin() + 2
+    auto pos = v.insert(v.begin() + 2, { 3, 4, 5 });
+
+    // Check that the returned iterator points to the first inserted element
+    EXPECT_EQ(*pos, 3);
+
+    // Check the size of the vector after insertion
+    EXPECT_EQ(v.size(), 7);
+
+    // Check the contents of the vector after insertion
+    EXPECT_EQ(v[0], 1);
+    EXPECT_EQ(v[1], 2);
+    EXPECT_EQ(v[2], 3);
+    EXPECT_EQ(v[3], 4);
+    EXPECT_EQ(v[4], 5);
+    EXPECT_EQ(v[5], 6);
+    EXPECT_EQ(v[6], 7);
 }

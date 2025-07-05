@@ -723,11 +723,11 @@ class vector
     }
 
     /**
-     * @brief Inserts a range of elements into the vector before the specified position.
+     * @brief Inserts a range into the vector.
      *
-     * This function inserts elements from the range `[first, last)` into the vector
-     * before the location specified by `position`. If the range cannot fit into the
-     * remaining capacity, a reallocation is triggered.
+     * This function inserts copies of the elements from the range `[first, last)` into
+     * the vector before the location specified by `position`. If the range cannot fit
+     * into the remaining capacity, a reallocation is triggered.
      *
      * @tparam InputIt The type of the input iterator. Must satisfy the requirements
      * of `std::input_iterator`.
@@ -778,60 +778,53 @@ class vector
 
         if (src_len >= num_elems_to_shift) {
             // a) If 3 or more elements have to be inserted at pos_,
-            //  then the range [position,end) has to be moved/copied
+            //  then the range [position,end) has to be copied
             //  to raw storage.
-            if constexpr (std::is_nothrow_move_constructible_v<T>)
-                std::uninitialized_move(pos_, end(), d_first);
-            else
-                std::uninitialized_copy(pos_, end(), d_first);
+            std::uninitialized_copy(pos_, end(), d_first);
         } else {
             // b) If less than 3 elements have to be inserted at pos_,
             // then
             //   => a subsequence [end() - src_len, end()) has to be
-            //   copied/moved
+            //   copied
             //      to raw storage.
             //   => the subsequence [pos_,end() - src_len) has to be
-            //   copied/moved
+            //   copied
             //      to initialized storage.
-            if constexpr (std::is_nothrow_move_constructible_v<T>) {
-                std::uninitialized_move(end() - src_len, end(), d_last - src_len);
-                std::move_backward(pos_, end() - src_len, end());
-            } else {
-                std::uninitialized_copy(end() - src_len, end(), d_last - src_len);
-                std::copy_backward(pos_, end() - src_len, end());
-            }
+            std::uninitialized_copy(end() - src_len, end(), d_last - src_len);
+            std::copy_backward(pos_, end() - src_len, end());
         }
 
-        // 3. Copy/move elements from src to dest range.
+        // 3. Copy elements from src to dest range.
         if (src_len <= num_elems_to_shift) {
-            // a) Copy/move the elements from the source range to
+            // a) Copy the elements from the source range to
             // [pos_,pos+src_len)
-            if constexpr (std::is_nothrow_move_constructible_v<T>) {
-                std::move(first, last, pos_);
-            } else {
-                std::copy(first, last, pos_);
-            }
+            std::copy(first, last, pos_);
+
         } else {
-            // b) (i) Copy/move the elements from
+            // b) (i) Copy the elements from
             //     the subsequence [first,first + num_elems_to_shift)
             //     to [pos_,end())
-            if constexpr (std::is_nothrow_move_constructible_v<T>) {
-                std::move(first, first + num_elems_to_shift, pos_);
-            } else {
-                std::copy(first, first + num_elems_to_shift, pos_);
-            }
-            // (ii) Copy/move the elements from
+            std::copy(first, first + num_elems_to_shift, pos_);
+
+            // (ii) Copy the elements from
             // [first+num_elems_to_shift,last)
             //      to uninitialized storage [end(),pos_ + src_len)
-            if constexpr (std::is_nothrow_move_constructible_v<T>) {
-                std::uninitialized_move(first + num_elems_to_shift, last, end());
-            } else {
-                std::uninitialized_copy(first + num_elems_to_shift, last, end());
-            }
+            std::uninitialized_copy(first + num_elems_to_shift, last, end());
         }
 
         m_size += src_len;
         return pos_;
+    }
+
+    /**
+     * @brief Inserts elements from the initializer_list @a ilist before
+     * @a position.
+     */
+    // FIXME: This implementation should be more efficient. If T is
+    // move-constructible, move elements from %ilist instead of copy.
+    iterator insert(const_iterator position, std::initializer_list<T> ilist)
+    {
+        return insert(position, ilist.begin(), ilist.end());
     }
 
     // TODO: Add an implementation of insert(const_iterator position, InputIt first,
