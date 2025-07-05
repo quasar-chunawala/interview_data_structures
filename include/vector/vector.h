@@ -638,7 +638,8 @@ class vector
     }
 
     /**
-     * @brief Inserts given value into vector before specified iterator.
+     * @brief Inserts given %value into vector before specified %position,
+     * possibly using move-semantics.
      * Note that this kind of operation could be expensive for a vector
      * and if it is frequently used, it can trigger reallocation.
      * The user should consider using std::list.
