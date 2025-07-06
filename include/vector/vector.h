@@ -256,7 +256,6 @@ class vector
             std::destroy_at(p.m_ptr);
 
         ::operator delete(m_elements);
-        throw;
     }
 
     /**
@@ -271,8 +270,9 @@ class vector
         try {
             for (; i != begin() + size; ++i)
                 std::construct_at(i.m_ptr, init);
-        } catch (...) {
+        } catch (std::exception& ex) {
             cleanup_on_fail_aux(i);
+            throw ex; // rethrow
         }
     }
 
@@ -281,17 +281,17 @@ class vector
      * to %[begin(),begin()+std::distance(first,last)).
      */
     template<typename It>
+        requires std::forward_iterator<It>
     void copy_rng_aux(It first, It last)
     {
-        static_assert(std::forward_iterator<decltype(first)>);
-        static_assert(std::forward_iterator<decltype(last)>);
         auto i{ begin() };
         auto j{ first };
         try {
             for (; j != last; ++i, ++j)
                 std::construct_at(i.m_ptr, *j);
-        } catch (...) {
+        } catch (std::exception& ex) {
             cleanup_on_fail_aux(i);
+            throw ex; // rethrow
         }
     }
 
@@ -319,11 +319,22 @@ class vector
         } else {
             try {
                 std::uninitialized_copy(begin(), end(), d_first);
-            } catch (...) {
+            } catch (std::exception& ex) {
                 ::operator delete(ptr_to_new_storage_block);
-                throw;
+                throw ex; // rethrow
             }
         }
+    }
+
+    /**
+     * @brief helper function to destroy the range [first,last) and
+     * deallocate the memory block pointed to by ptr.
+     */
+    template<typename It>
+    void destroy_aux(It first, It last, pointer ptr)
+    {
+        std::destroy(first, last);
+        ::operator delete(ptr);
     }
 
     /**
@@ -431,7 +442,7 @@ class vector
     vector& operator=(vector&& other) noexcept
     {
         vector(std::move(other)).swap(*this);
-        return (*this);
+        return *this;
     }
 
     /**
@@ -471,8 +482,7 @@ class vector
             iterator d_first = iterator(p);
             std::uninitialized_copy(first, last, d_first);
 
-            std::destroy(begin(), end());
-            ::operator delete(m_elements);
+            destroy_aux(begin(), end(), m_elements);
             m_elements = p;
             m_size = n;
             m_capacity = n;
@@ -497,13 +507,9 @@ class vector
      * @brief Returns a read/write iterator that points to the first element
      * of the vector.
      */
-    auto begin(this auto&& self)
-    {
-        if constexpr (std::is_const_v<std::remove_reference_t<decltype(self)>>)
-            return const_iterator(self.m_elements);
-        else
-            return iterator(self.m_elements);
-    }
+    auto begin() { return iterator(m_elements); }
+
+    auto begin() const { return const_iterator(m_elements); }
 
     /**
      * @brief Returns a read-only iterator to the first element
@@ -515,13 +521,9 @@ class vector
      * @brief Returns a read/write iterator that points to one past the last
      * element of the vector.
      */
-    auto end(this auto&& self)
-    {
-        if constexpr (std::is_const_v<std::remove_reference_t<decltype(self)>>)
-            return const_iterator(self.m_elements + self.m_size);
-        else
-            return iterator(self.m_elements + self.m_size);
-    }
+    auto end() { return iterator(m_elements + m_size); }
+
+    auto end() const { return const_iterator(m_elements + m_size); }
 
     /**
      * @brief Returns a read-only iterator to one-past-the-last element
@@ -589,34 +591,31 @@ class vector
         requires std::is_convertible_v<U, T>
     void push_back(U&& value)
     {
-        pointer p{ nullptr };
         size_t new_capacity = m_capacity ? 2 * m_capacity : 16;
 
         if (full()) {
             // can throw, if allocation fails
-            p = allocate_aux(new_capacity);
+            pointer p = allocate_aux(new_capacity);
             try {
                 // can throw if copy c'tor fails
                 construct_at_addr(p + m_size, std::forward<U>(value));
-            } catch (...) {
+            } catch (std::exception& ex) {
                 ::operator delete(p);
-                throw;
+                throw ex;
             }
 
             copy_old_storage_to_new(p);
 
             // Deallocate old storage
-            std::destroy(begin(), end());
-            ::operator delete(m_elements);
+            destroy_aux(begin(), end(), m_elements);
 
             // Reassign m_elements and m_capacity
             m_elements = p;
             m_capacity = new_capacity;
-            ++m_size;
         } else {
             std::construct_at(begin().get() + m_size, std::forward<U>(value));
-            ++m_size;
         }
+        ++m_size;
     }
 
     /**
@@ -624,7 +623,7 @@ class vector
      */
     void pop_back()
     {
-        std::destroy_at(end().get());
+        std::destroy_at(std::prev(end()).get());
         --m_size;
     }
 
@@ -699,9 +698,9 @@ class vector
 
             try {
                 construct_at_addr(ptr_new_blk + index, std::forward<U>(value));
-            } catch (...) {
+            } catch (std::exception& ex) {
                 ::operator delete(ptr_new_blk);
-                throw;
+                throw ex;
             }
 
             // Copy/move elements from m_data[0..index-1] to
@@ -730,15 +729,15 @@ class vector
                 for (; p2 != end(); ++p2, ++j) {
                     construct_at_addr(ptr_new_blk + j, std::forward<U>(*p2));
                 }
-            } catch (...) {
+            } catch (std::exception& ex) {
                 auto q{ ptr_new_blk };
                 std::destroy(q, q + j);
                 ::operator delete(ptr_new_blk);
-                throw;
+                throw ex;
             }
 
-            std::destroy(begin(), end());
-            ::operator delete(m_elements);
+            destroy_aux(begin(), end(), m_elements);
+
             m_elements = ptr_new_blk;
             m_capacity = new_capacity;
             pos_ = begin() + index;
@@ -800,11 +799,10 @@ class vector
         iterator pos_ = begin() + index;
 
         //             num_elems_to_shift
-        // 2.            |<--------->|
-        //   begin()     position    end() capacity |           | |
+        // 2.            |<--------->|                             capacity
+        //   begin()     position    end()                               |
         //    ===========================================================
-        //   |42 |5  |17 |28 |63 |55 |   |   |   |   |   |   |   |   |
-        //   |
+        //   |42 |5  |17 |28 |63 |55 |   |   |   |   |   |   |   |   |   |
         //    ===========================================================
         //                           ^-----------------------------------^
         //                                       Raw Storage
