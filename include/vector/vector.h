@@ -568,20 +568,14 @@ class vector
     /**
      * @brief Accesses the first element of the container
      */
-    template<typename Self>
-    decltype(auto) front(this Self&& self)
-    {
-        return self.m_elements[0];
-    }
+    reference front() { return m_elements[0]; }
+    const_reference front() const { return m_elements[0]; }
 
     /**
      * @brief Accesses the last element of the container
      */
-    template<typename Self>
-    decltype(auto) back(this Self&& self)
-    {
-        return self.m_elements[self.m_size - 1];
-    }
+    reference back() { return m_elements[m_size - 1]; }
+    const_reference back() const { return m_elements[m_size - 1]; }
 
     // Modifiers
     /**
@@ -712,12 +706,12 @@ class vector
                 for (; p1 != begin() + index; ++p1, ++i) {
                     construct_at_addr(ptr_new_blk + i, std::forward<U>(*p1));
                 }
-            } catch (...) {
+            } catch (std::exception& ex) {
                 auto q{ iterator(ptr_new_blk) };
                 std::destroy(q, q + i);
                 std::destroy_at(q.m_ptr + index);
                 ::operator delete(ptr_new_blk);
-                throw;
+                throw ex; // rethrow
             }
 
             // Copy/move elements from m_data[index...] to
@@ -741,21 +735,18 @@ class vector
             m_elements = ptr_new_blk;
             m_capacity = new_capacity;
             pos_ = begin() + index;
-            ++m_size;
         } else {
             if constexpr (std::is_nothrow_move_constructible_v<T>) {
                 std::uninitialized_move(end() - 1, end(), end());
                 std::move_backward(pos_, end(), end());
                 *pos_ = std::forward<U>(value);
-                ++m_size;
             } else {
                 std::uninitialized_copy(end() - 1, end(), end());
                 std::copy_backward(pos_, end(), end());
                 *pos_ = value;
-                ++m_size;
             }
         }
-
+        ++m_size;
         return pos_;
     }
 
