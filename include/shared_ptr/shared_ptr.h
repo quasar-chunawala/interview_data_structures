@@ -1,5 +1,7 @@
 #include <atomic>
+#include <cassert>
 #include <format>
+#include <iostream>
 #include <memory>
 #include <utility>
 
@@ -19,14 +21,22 @@ class shared_ptr_base
     struct destroy_wrapper // RAII class
     {
         template<typename Deleter>
-        destroy_wrapper(Deleter deleter)
-          : m_destroyer_ptr{ new destroyer<Deleter>(deleter) }
+        explicit destroy_wrapper(Deleter&& deleter)
+          : m_destroyer_ptr{ new destroyer<Deleter>(std::forward<Deleter>(deleter)) }
         {
+            std::cout << "\n" << "destroy_wrapper::destroy_wrapper(Deleter&&)";
+        }
+
+        destroy_wrapper(destroy_wrapper&& other) noexcept
+          : m_destroyer_ptr{ std::exchange(other.m_destroyer_ptr, nullptr) }
+        {
+            std::cout << "\n" << "destroy_wrapper::destroy_wrapper(destroy_wrapper&&)";
         }
 
         void operator()(pointer ptr)
         {
             (*m_destroyer_ptr)(ptr); // Virtual polymorphism
+            std::cout << "\n" << "destroy_wrapper::operator()(T*)";
         }
 
         struct destroyer_base
@@ -38,54 +48,74 @@ class shared_ptr_base
         template<typename Deleter>
         struct destroyer : public destroyer_base
         {
-            destroyer(Deleter deleter)
+            explicit destroyer(Deleter deleter)
               : destroyer_base()
               , m_deleter{ deleter }
             {
+                std::cout << "\n" << "destroyer::destroyer()(Deleter&&)";
             }
 
-            // The default move and copy constructors will copy/move each member
+            // destroy_wrapper is a wrapper over a unique_ptr<destroyer_base>.
+            // It is intended to be ONLY move-constructible.
 
-            void operator()(pointer ptr) override { (m_deleter)(ptr); }
+            void operator()(pointer ptr) override
+            {
+                std::cout << "\n" << "destroyer::operator()(T*)";
+                m_deleter(ptr);
+            }
 
             Deleter m_deleter;
         };
 
-        ~destroy_wrapper() { delete m_destroyer_ptr; }
-        destroyer_base* m_destroyer_ptr;
+        ~destroy_wrapper() {}
+        std::unique_ptr<destroyer_base> m_destroyer_ptr;
     };
 
     struct control_block_base
     {
-        std::atomic<unsigned long long> m_ref_count{ 1u };
+        std::atomic<unsigned long long> m_ref_count;
         destroy_wrapper m_destroy_wrapper;
 
         /**
          * @brief Default constructor
          */
         control_block_base()
-          : m_destroy_wrapper{ std::default_delete<T>() }
+          : control_block_base(0u, destroy_wrapper(std::default_delete<T>()))
         {
+            std::cout << "\n" << "control_block_base::control_block_base()";
         }
 
-        /**
-         * @brief Constructor that accepts a destroyer.
-         */
-        control_block_base(destroy_wrapper wrapper)
-          : m_destroy_wrapper{ wrapper }
+        explicit control_block_base(destroy_wrapper&& wrapper)
+          : control_block_base(0u, std::move(wrapper))
         {
+            std::cout << "\n"
+                      << "control_block_base::control_block_base(destroy_wrapper&&)";
+        }
+
+        explicit control_block_base(unsigned long long ref_count,
+                                    destroy_wrapper&& wrapper)
+          : m_destroy_wrapper{ std::move(wrapper) }
+        {
+            std::cout << "\n"
+                      << "control_block_base::control_block_base(ull, destroy_wrapper&&)";
+            m_ref_count.store(ref_count);
         }
 
         /**
          * @brief helper function to increment the object reference count
          */
-        void increment() { m_ref_count.fetch_add(1u); }
+        void increment()
+        {
+            std::cout << "\n" << "control_block_base::increment()";
+            m_ref_count.fetch_add(1u);
+        }
 
         /**
          * @brief helper function to decrement the object reference count
          */
         auto decrement()
         {
+            std::cout << "\n" << "control_block_base::decrement()";
             auto result = m_ref_count.fetch_sub(1u);
             return result;
         }
@@ -100,37 +130,48 @@ class shared_ptr_base
         /**
          * @brief Return the object reference count
          */
-        auto use_count() { return m_ref_count.load(); }
+        [[nodiscard]] unsigned long long use_count() const noexcept
+        {
+            return m_ref_count.load();
+        }
 
-        virtual void release_shared() = 0;
+        // destroy_wrapper get_deleter() { return m_destroy_wrapper; }
+
+        virtual void release_shared(T*) = 0;
         virtual ~control_block_base() {}
     };
 
     struct control_block : public control_block_base
     {
-        pointer m_object_ptr;
+        // pointer m_object_ptr;
 
-        explicit control_block(pointer data)
-          : control_block_base{}
-          , m_object_ptr{ data }
+        control_block()
+          : control_block_base()
+        {
+            std::cout << "\n" << "control_block::control_block()";
+        }
+
+        explicit control_block(unsigned long long ref_count, destroy_wrapper&& wrapper)
+          : control_block_base(ref_count, std::move(wrapper))
         {
         }
 
-        explicit control_block(pointer data, destroy_wrapper wrapper)
-          : control_block_base{ wrapper }
-          , m_object_ptr{ data }
+        explicit control_block(destroy_wrapper&& wrapper)
+          : control_block_base(std::move(wrapper))
         {
+            std::cout << "\n" << "control_block::control_block(destroy_wrapper&&)";
         }
 
-        void release_shared() override
+        void release_shared(T* raw_underlying_ptr) override
         {
-            if (control_block_base::decrement() == 0) {
-                control_block_base::m_destroy_wrapper(m_object_ptr);
+            std::cout << "\n" << "control_block::release_shared()";
+            if (--this->m_ref_count == 0) {
+                control_block_base::m_destroy_wrapper(raw_underlying_ptr);
                 delete this;
             }
         }
 
-        ~control_block() {}
+        ~control_block() { std::cout << "\n" << "control_block::~control_block()"; }
     };
 
     /**
@@ -163,9 +204,9 @@ class shared_ptr_base
         {
         }
 
-        void release_shared() override
+        void release_shared(T*) override
         {
-            if (control_block_base::decrement() == 0) {
+            if (--control_block_base::m_ref_count == 0) {
                 delete this;
             }
         }
@@ -175,12 +216,22 @@ class shared_ptr_base
 
   public:
     /**
-     * @brief Default constructor
+     * @brief Default constructor - an empty shared_ptr
      */
     shared_ptr_base()
-      : m_raw_underlying_ptr{ nullptr }
-      , m_control_block_ptr{ nullptr }
+      : shared_ptr_base(nullptr)
     {
+        std::cout << "\n" << "shared_ptr_base::shared_ptr_base()";
+    }
+
+    /**
+     * @brief shared_ptr
+     */
+    shared_ptr_base(std::nullptr_t)
+      : m_raw_underlying_ptr{ nullptr }
+      , m_control_block_ptr{ new control_block() }
+    {
+        std::cout << "\n" << "shared_ptr_base::shared_ptr_base(std::nullptr_t)";
     }
 
     /**
@@ -189,24 +240,30 @@ class shared_ptr_base
      */
     explicit shared_ptr_base(pointer ptr)
       : m_raw_underlying_ptr{ ptr }
-      , m_control_block_ptr{ new control_block(ptr) }
+      , m_control_block_ptr{ nullptr }
     {
+        // The child-classes will allocate the control_block
+        std::cout << "\n" << "shared_ptr_base::shared_ptr_base(T*)";
     }
 
     /**
      * @brief Constructor that takes a raw pointer and a custom deleter. Takes
      * ownership of the pointee.
      */
-    template<typename Deleter>
-    explicit shared_ptr_base(T* ptr, Deleter deleter)
+    explicit shared_ptr_base(T* ptr, destroy_wrapper&& destroyer)
       : m_raw_underlying_ptr{ ptr }
       , m_control_block_ptr{ nullptr }
     {
+        std::cout << "\n" << "shared_ptr_base::shared_ptr_base(T*, destroy_wrapper&&)";
         try {
-            control_block_base* cb = new control_block(ptr, destroy_wrapper(deleter));
-            m_control_block_ptr = cb;
+            if (ptr) {
+                m_control_block_ptr = new control_block(1u, std::move(destroyer));
+            } else {
+                m_control_block_ptr = new control_block(std::move(destroyer));
+            }
+
         } catch (std::exception& ex) {
-            deleter(ptr);
+            destroyer(ptr);
             throw ex;
         }
     }
@@ -215,6 +272,7 @@ class shared_ptr_base
       : m_raw_underlying_ptr{ ptr }
       , m_control_block_ptr{ cb }
     {
+        std::cout << "\n" << "shared_ptr_base::shared_ptr_base(T*, control_block_base*)";
     }
 
     /**
@@ -225,6 +283,7 @@ class shared_ptr_base
       : m_raw_underlying_ptr{ other.m_raw_underlying_ptr }
       , m_control_block_ptr{ other.m_control_block_ptr }
     {
+        std::cout << "\n" << "shared_ptr_base::shared_ptr_base(const shared_ptr_base&)";
         if (m_control_block_ptr)
             m_control_block_ptr->increment(); // Atomic pre-increment
     }
@@ -236,6 +295,7 @@ class shared_ptr_base
       : m_raw_underlying_ptr{ std::exchange(other.m_raw_underlying_ptr, nullptr) }
       , m_control_block_ptr{ std::exchange(other.m_control_block_ptr, nullptr) }
     {
+        std::cout << "\n" << "shared_ptr_base::shared_ptr_base(shared_ptr_base&&)";
     }
 
     /**
@@ -243,6 +303,7 @@ class shared_ptr_base
      */
     void swap(shared_ptr_base& other)
     {
+        std::cout << "\n" << "shared_ptr_base::swap(shared_ptr_base&)";
         std::swap(m_raw_underlying_ptr, other.m_raw_underlying_ptr);
         std::swap(m_control_block_ptr, other.m_control_block_ptr);
     }
@@ -275,8 +336,9 @@ class shared_ptr_base
      */
     ~shared_ptr_base()
     {
-        if (m_control_block_ptr) {
-            m_control_block_ptr->release_shared();
+        std::cout << "\n" << "shared_ptr_base::~shared_ptr_base()";
+        if (m_raw_underlying_ptr) {
+            m_control_block_ptr->release_shared(m_raw_underlying_ptr);
             m_raw_underlying_ptr = nullptr;
         }
     }
@@ -285,7 +347,11 @@ class shared_ptr_base
     /**
      * @brief Returns the raw underlying pointer.
      */
-    [[nodiscard]] pointer get() { return m_raw_underlying_ptr; }
+    [[nodiscard]] pointer get()
+    {
+        std::cout << "\n" << "shared_ptr_base::get()";
+        return m_raw_underlying_ptr;
+    }
 
     /**
      * @brief Returns a %pointer-to-const
@@ -355,8 +421,17 @@ class shared_ptr_base
      */
     void reset(T* ptr)
     {
-        if (m_raw_underlying_ptr != ptr)
-            shared_ptr_base(ptr).swap(*this);
+        if (m_raw_underlying_ptr != ptr) {
+            if (--m_control_block_ptr->m_ref_count == 0) {
+                m_control_block_ptr->m_destroy_wrapper(m_raw_underlying_ptr);
+                m_control_block_ptr->m_ref_count.store(1u);
+            } else {
+                // Multiple ownership
+                m_control_block_ptr =
+                  new control_block(1u, destroy_wrapper(std::default_delete<T>()));
+            }
+            m_raw_underlying_ptr = ptr;
+        }
     }
 
     /**
@@ -371,11 +446,10 @@ class shared_ptr_base
         /* Perform a single heap memory allocation */
         control_block_with_storage* cb = new control_block_with_storage(
           destroy_wrapper(std::default_delete<T>()), (std::forward<Args>(args))...);
-        // T* data = cb->get();
         return shared_ptr_base<T>(cb->get(), cb);
     }
 
-  private:
+  protected:
     T* m_raw_underlying_ptr;
     control_block_base* m_control_block_ptr;
 };
@@ -384,15 +458,39 @@ template<typename T>
 class shared_ptr : public shared_ptr_base<T>
 {
   public:
+    using control_block = shared_ptr_base<T>::control_block;
+    using destroy_wrapper = typename shared_ptr_base<T>::destroy_wrapper;
+    shared_ptr()
+      : shared_ptr_base<T>()
+    {
+        std::cout << "\n" << "shared_ptr::shared_ptr()";
+    }
+
+    shared_ptr(std::nullptr_t)
+      : shared_ptr_base<T>(nullptr)
+    {
+        std::cout << "\n" << "shared_ptr::shared_ptr(std::nullptr_t)";
+    }
+
     explicit shared_ptr(T* ptr)
       : shared_ptr_base<T>(ptr)
     {
+        std::cout << "\n" << "shared_ptr::shared_ptr(T*)";
+        try {
+            shared_ptr_base<T>::m_control_block_ptr =
+              new control_block(1u, destroy_wrapper(std::default_delete<T>()));
+        } catch (std::exception& ex) {
+            delete ptr;
+            // We may want to log the exception here
+            throw ex;
+        }
     }
 
-    template<typename Deleter = std::default_delete<T>>
+    template<typename Deleter>
     explicit shared_ptr(T* ptr, Deleter deleter)
-      : shared_ptr_base<T>(ptr, deleter)
+      : shared_ptr_base<T>(ptr, destroy_wrapper(deleter))
     {
+        std::cout << "\n" << "shared_ptr::shared_ptr(T*)";
     }
 };
 
@@ -400,15 +498,41 @@ template<typename T>
 class shared_ptr<T[]> : public shared_ptr_base<T>
 {
   public:
+    using control_block = shared_ptr_base<T>::control_block;
+    using destroy_wrapper = typename shared_ptr_base<T>::destroy_wrapper;
+
+    shared_ptr()
+      : shared_ptr(nullptr)
+    {
+        std::cout << "\n" << "shared_ptr::shared_ptr()";
+    }
+    shared_ptr(std::nullptr_t)
+      : shared_ptr_base<T>{ nullptr, destroy_wrapper(std::default_delete<T[]>()) }
+    {
+        std::cout << "\n" << "shared_ptr::shared_ptr(std::nullptr_t)";
+    }
+
     explicit shared_ptr(T* ptr)
       : shared_ptr_base<T>(ptr)
     {
+        std::cout << "\n" << "shared_ptr::shared_ptr(T*)";
+        try {
+            shared_ptr_base<T>::m_control_block_ptr =
+              new control_block(1u, destroy_wrapper(std::default_delete<T[]>()));
+        } catch (std::exception& ex) {
+            delete[] ptr;
+            // We may want to log the exception here
+            throw ex;
+        }
     }
 
     template<typename Deleter = std::default_delete<T[]>>
     explicit shared_ptr(T* ptr, Deleter deleter)
-      : shared_ptr_base<T>(ptr, deleter)
+      : shared_ptr_base<T>(ptr, destroy_wrapper(deleter))
     {
+        std::cout << "\n" << "shared_ptr::shared_ptr(T*,Deleter)";
     }
+
+    T& operator[](int n) { return shared_ptr_base<T>::m_raw_underlying_ptr[n]; }
 };
 } // namespace dev
