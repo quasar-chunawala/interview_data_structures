@@ -66,29 +66,34 @@ TEST(SharedPtrTest, ResetSharedPtrMultipleOwnership)
 
 TEST(SharedPtrTest, ResetArrayVersion)
 {
-    // Allocate an array of 10 doubles and zero-initialize it
-    double* data = new double[10];
-    for (int i{ 0 }; i < 10; ++i) {
-        data[i] = i * 2;
-    }
-    dev::shared_ptr<double[]> ptr(data, std::default_delete<double[]>());
-    EXPECT_EQ(ptr.get(), data);
-    for (int i{ 0 }; i < 10; ++i) {
-        EXPECT_EQ(ptr[i], data[i]);
-    }
+    int* a = new int[3];
+    a[0] = 1;
+    a[1] = 2;
+    a[2] = 3;
+    int* b = new int[3];
+    b[0] = 4;
+    b[1] = 5;
+    b[2] = 6;
 
-    // Create a fresh instance of an array of 10 double's
-    double* other{ new double[10] };
-    for (int i{ 0 }; i < 10; ++i) {
-        other[i] = i * 3;
-    }
+    dev::shared_ptr<int[]> sptr1(a);
+    dev::shared_ptr<int[]> sptr2(sptr1);
+    dev::shared_ptr<int[]> sptr3(sptr2);
 
-    // Reset the shared_ptr, hand it the new created array
-    ptr.reset(other);
-    EXPECT_EQ(ptr.get(), other);
-    for (int i{ 0 }; i < 10; ++i) {
-        EXPECT_EQ(ptr[i], other[i]);
-    }
+    EXPECT_EQ(sptr1.use_count(), 3);
+    EXPECT_EQ(sptr1[0], 1);
+    EXPECT_EQ(sptr1[1], 2);
+    EXPECT_EQ(sptr1[2], 3);
+
+    sptr1.reset(b);
+    EXPECT_EQ(sptr1.use_count(), 1);
+    EXPECT_EQ(sptr2.use_count(), 2);
+    EXPECT_EQ(sptr1[0], 4);
+    EXPECT_EQ(sptr1[1], 5);
+    EXPECT_EQ(sptr1[2], 6);
+
+    EXPECT_EQ(sptr2[0], 1);
+    EXPECT_EQ(sptr2[1], 2);
+    EXPECT_EQ(sptr2[2], 3);
 }
 
 TEST(SharedPtrTest, ParametrizedCTorTestScalarVersion)

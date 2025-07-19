@@ -417,24 +417,6 @@ class shared_ptr_base
     }
 
     /**
-     * @brief Replaces the managed object.
-     */
-    void reset(T* ptr)
-    {
-        if (m_raw_underlying_ptr != ptr) {
-            if (--m_control_block_ptr->m_ref_count == 0) {
-                m_control_block_ptr->m_destroy_wrapper(m_raw_underlying_ptr);
-                m_control_block_ptr->m_ref_count.store(1u);
-            } else {
-                // Multiple ownership
-                m_control_block_ptr =
-                  new control_block(1u, destroy_wrapper(std::default_delete<T>()));
-            }
-            m_raw_underlying_ptr = ptr;
-        }
-    }
-
-    /**
      * @brief %make_shared is a utility function that accepts constructor
      * args and perfoms a single heap memory allocation for both the managed resource
      * and the control block.
@@ -447,6 +429,20 @@ class shared_ptr_base
         control_block_with_storage* cb = new control_block_with_storage(
           destroy_wrapper(std::default_delete<T>()), (std::forward<Args>(args))...);
         return shared_ptr_base<T>(cb->get(), cb);
+    }
+
+    void reset_base(T* ptr, destroy_wrapper&& wrapper)
+    {
+        if (m_raw_underlying_ptr != ptr) {
+            if (--m_control_block_ptr->m_ref_count == 0) {
+                m_control_block_ptr->m_destroy_wrapper(m_raw_underlying_ptr);
+                m_control_block_ptr->m_ref_count.store(1u);
+            } else {
+                // Multiple ownership
+                m_control_block_ptr = new control_block(1u, std::move(wrapper));
+            }
+            shared_ptr_base<T>::m_raw_underlying_ptr = ptr;
+        }
     }
 
   protected:
@@ -492,6 +488,14 @@ class shared_ptr : public shared_ptr_base<T>
     {
         std::cout << "\n" << "shared_ptr::shared_ptr(T*)";
     }
+
+    /**
+     * @brief Replaces the managed object.
+     */
+    void reset(T* ptr)
+    {
+        shared_ptr_base<T>::reset_base(ptr, destroy_wrapper(std::default_delete<T>()));
+    }
 };
 
 template<typename T>
@@ -531,6 +535,14 @@ class shared_ptr<T[]> : public shared_ptr_base<T>
       : shared_ptr_base<T>(ptr, destroy_wrapper(deleter))
     {
         std::cout << "\n" << "shared_ptr::shared_ptr(T*,Deleter)";
+    }
+
+    /**
+     * @brief Replaces the managed object.
+     */
+    void reset(T* ptr)
+    {
+        shared_ptr_base<T>::reset_base(ptr, destroy_wrapper(std::default_delete<T[]>()));
     }
 
     T& operator[](int n) { return shared_ptr_base<T>::m_raw_underlying_ptr[n]; }
