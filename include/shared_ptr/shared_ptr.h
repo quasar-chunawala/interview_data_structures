@@ -24,19 +24,16 @@ class shared_ptr_base
         explicit destroy_wrapper(Deleter&& deleter)
           : m_destroyer_ptr{ new destroyer<Deleter>(std::forward<Deleter>(deleter)) }
         {
-            std::cout << "\n" << "destroy_wrapper::destroy_wrapper(Deleter&&)";
         }
 
         destroy_wrapper(destroy_wrapper&& other) noexcept
           : m_destroyer_ptr{ std::exchange(other.m_destroyer_ptr, nullptr) }
         {
-            std::cout << "\n" << "destroy_wrapper::destroy_wrapper(destroy_wrapper&&)";
         }
 
         void operator()(pointer ptr)
         {
             (*m_destroyer_ptr)(ptr); // Virtual polymorphism
-            std::cout << "\n" << "destroy_wrapper::operator()(T*)";
         }
 
         struct destroyer_base
@@ -52,17 +49,12 @@ class shared_ptr_base
               : destroyer_base()
               , m_deleter{ deleter }
             {
-                std::cout << "\n" << "destroyer::destroyer()(Deleter&&)";
             }
 
             // destroy_wrapper is a wrapper over a unique_ptr<destroyer_base>.
             // It is intended to be ONLY move-constructible.
 
-            void operator()(pointer ptr) override
-            {
-                std::cout << "\n" << "destroyer::operator()(T*)";
-                m_deleter(ptr);
-            }
+            void operator()(pointer ptr) override { m_deleter(ptr); }
 
             Deleter m_deleter;
         };
@@ -82,40 +74,30 @@ class shared_ptr_base
         control_block_base()
           : control_block_base(0u, destroy_wrapper(std::default_delete<T>()))
         {
-            std::cout << "\n" << "control_block_base::control_block_base()";
         }
 
         explicit control_block_base(destroy_wrapper&& wrapper)
           : control_block_base(0u, std::move(wrapper))
         {
-            std::cout << "\n"
-                      << "control_block_base::control_block_base(destroy_wrapper&&)";
         }
 
         explicit control_block_base(unsigned long long ref_count,
                                     destroy_wrapper&& wrapper)
           : m_destroy_wrapper{ std::move(wrapper) }
         {
-            std::cout << "\n"
-                      << "control_block_base::control_block_base(ull, destroy_wrapper&&)";
             m_ref_count.store(ref_count);
         }
 
         /**
          * @brief helper function to increment the object reference count
          */
-        void increment()
-        {
-            std::cout << "\n" << "control_block_base::increment()";
-            m_ref_count.fetch_add(1u);
-        }
+        void increment() { m_ref_count.fetch_add(1u); }
 
         /**
          * @brief helper function to decrement the object reference count
          */
         auto decrement()
         {
-            std::cout << "\n" << "control_block_base::decrement()";
             auto result = m_ref_count.fetch_sub(1u);
             return result;
         }
@@ -148,7 +130,6 @@ class shared_ptr_base
         control_block()
           : control_block_base()
         {
-            std::cout << "\n" << "control_block::control_block()";
         }
 
         explicit control_block(unsigned long long ref_count, destroy_wrapper&& wrapper)
@@ -221,7 +202,6 @@ class shared_ptr_base
     shared_ptr_base()
       : shared_ptr_base(nullptr)
     {
-        std::cout << "\n" << "shared_ptr_base::shared_ptr_base()";
     }
 
     /**
@@ -231,7 +211,6 @@ class shared_ptr_base
       : m_raw_underlying_ptr{ nullptr }
       , m_control_block_ptr{ new control_block() }
     {
-        std::cout << "\n" << "shared_ptr_base::shared_ptr_base(std::nullptr_t)";
     }
 
     /**
@@ -243,7 +222,6 @@ class shared_ptr_base
       , m_control_block_ptr{ nullptr }
     {
         // The child-classes will allocate the control_block
-        std::cout << "\n" << "shared_ptr_base::shared_ptr_base(T*)";
     }
 
     /**
@@ -254,7 +232,6 @@ class shared_ptr_base
       : m_raw_underlying_ptr{ ptr }
       , m_control_block_ptr{ nullptr }
     {
-        std::cout << "\n" << "shared_ptr_base::shared_ptr_base(T*, destroy_wrapper&&)";
         try {
             if (ptr) {
                 m_control_block_ptr = new control_block(1u, std::move(destroyer));
@@ -272,7 +249,6 @@ class shared_ptr_base
       : m_raw_underlying_ptr{ ptr }
       , m_control_block_ptr{ cb }
     {
-        std::cout << "\n" << "shared_ptr_base::shared_ptr_base(T*, control_block_base*)";
     }
 
     /**
@@ -283,7 +259,6 @@ class shared_ptr_base
       : m_raw_underlying_ptr{ other.m_raw_underlying_ptr }
       , m_control_block_ptr{ other.m_control_block_ptr }
     {
-        std::cout << "\n" << "shared_ptr_base::shared_ptr_base(const shared_ptr_base&)";
         if (m_control_block_ptr)
             m_control_block_ptr->increment(); // Atomic pre-increment
     }
@@ -295,7 +270,6 @@ class shared_ptr_base
       : m_raw_underlying_ptr{ std::exchange(other.m_raw_underlying_ptr, nullptr) }
       , m_control_block_ptr{ std::exchange(other.m_control_block_ptr, nullptr) }
     {
-        std::cout << "\n" << "shared_ptr_base::shared_ptr_base(shared_ptr_base&&)";
     }
 
     /**
@@ -303,7 +277,6 @@ class shared_ptr_base
      */
     void swap(shared_ptr_base& other)
     {
-        std::cout << "\n" << "shared_ptr_base::swap(shared_ptr_base&)";
         std::swap(m_raw_underlying_ptr, other.m_raw_underlying_ptr);
         std::swap(m_control_block_ptr, other.m_control_block_ptr);
     }
@@ -336,7 +309,6 @@ class shared_ptr_base
      */
     ~shared_ptr_base()
     {
-        std::cout << "\n" << "shared_ptr_base::~shared_ptr_base()";
         if (m_raw_underlying_ptr) {
             m_control_block_ptr->release_shared(m_raw_underlying_ptr);
             m_raw_underlying_ptr = nullptr;
@@ -347,11 +319,7 @@ class shared_ptr_base
     /**
      * @brief Returns the raw underlying pointer.
      */
-    [[nodiscard]] pointer get()
-    {
-        std::cout << "\n" << "shared_ptr_base::get()";
-        return m_raw_underlying_ptr;
-    }
+    [[nodiscard]] pointer get() { return m_raw_underlying_ptr; }
 
     /**
      * @brief Returns a %pointer-to-const
@@ -454,19 +422,17 @@ class shared_ptr : public shared_ptr_base<T>
     shared_ptr()
       : shared_ptr_base<T>()
     {
-        std::cout << "\n" << "shared_ptr::shared_ptr()";
     }
 
     shared_ptr(std::nullptr_t)
       : shared_ptr_base<T>(nullptr)
     {
-        std::cout << "\n" << "shared_ptr::shared_ptr(std::nullptr_t)";
     }
 
     explicit shared_ptr(T* ptr)
       : shared_ptr_base<T>(ptr)
     {
-        std::cout << "\n" << "shared_ptr::shared_ptr(T*)";
+
         try {
             shared_ptr_base<T>::m_control_block_ptr =
               new control_block(1u, destroy_wrapper(std::default_delete<T>()));
@@ -481,7 +447,6 @@ class shared_ptr : public shared_ptr_base<T>
     explicit shared_ptr(T* ptr, Deleter deleter)
       : shared_ptr_base<T>(ptr, destroy_wrapper(deleter))
     {
-        std::cout << "\n" << "shared_ptr::shared_ptr(T*)";
     }
 
     template<typename... Args>
@@ -509,18 +474,15 @@ class shared_ptr<T[]> : public shared_ptr_base<T>
     shared_ptr()
       : shared_ptr(nullptr)
     {
-        std::cout << "\n" << "shared_ptr::shared_ptr()";
     }
     shared_ptr(std::nullptr_t)
       : shared_ptr_base<T>{ nullptr, destroy_wrapper(std::default_delete<T[]>()) }
     {
-        std::cout << "\n" << "shared_ptr::shared_ptr(std::nullptr_t)";
     }
 
     explicit shared_ptr(T* ptr)
       : shared_ptr_base<T>(ptr)
     {
-        std::cout << "\n" << "shared_ptr::shared_ptr(T*)";
         try {
             shared_ptr_base<T>::m_control_block_ptr =
               new control_block(1u, destroy_wrapper(std::default_delete<T[]>()));
@@ -535,7 +497,6 @@ class shared_ptr<T[]> : public shared_ptr_base<T>
     explicit shared_ptr(T* ptr, Deleter deleter)
       : shared_ptr_base<T>(ptr, destroy_wrapper(deleter))
     {
-        std::cout << "\n" << "shared_ptr::shared_ptr(T*,Deleter)";
     }
 
     template<typename... Args>
@@ -567,13 +528,6 @@ make_shared(Args&&... args)
     return shared_ptr<T>(std::forward<Args>(args)...);
 }
 
-/**
- * @brief %make_shared array version
- */
-// template<typename T, typename... Args>
-// shared_ptr<T[]> // Array version
-// make_shared<T[]>(Args&&... args)
-//{
-//     return shared_ptr<T[]>(std::forward<Args>(args)...);
-// }
+// TODO: Implement the array-version of make_shared<T[]> available since C++20
+
 } // namespace dev
