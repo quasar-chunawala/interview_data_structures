@@ -3,6 +3,30 @@
 #include <gtest/gtest.h>
 #include <thread>
 
+// make_shared<T>(constructor_args) test
+TEST(SharedPtrTest, MakeSharedTest)
+{
+    struct Point2D
+    {
+        double x;
+        double y;
+
+        Point2D(double x_, double y_)
+          : x{ x_ }
+          , y{ y_ }
+        {
+        }
+
+        ~Point2D() = default;
+    };
+
+    dev::shared_ptr<Point2D> sptr = dev::make_shared<Point2D>(3.0, 5.0);
+    EXPECT_NE(sptr, nullptr);
+    EXPECT_EQ(sptr->x, 3.0);
+    EXPECT_EQ(sptr->y, 5.0);
+    EXPECT_EQ(sptr.use_count(), 1);
+}
+
 TEST(SharedPtrTest, ResetSharedPtr)
 {
     struct X

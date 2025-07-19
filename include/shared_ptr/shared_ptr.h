@@ -188,7 +188,7 @@ class shared_ptr_base
          */
         template<typename... Args>
         explicit control_block_with_storage(Args&&... args)
-          : control_block_base{}
+          : control_block_base{ 1u, destroy_wrapper(std::default_delete<T>()) }
           , m_object(std::forward<Args>(args)...)
         {
         }
@@ -198,8 +198,8 @@ class shared_ptr_base
          * forwards the constructor args
          */
         template<typename... Args>
-        explicit control_block_with_storage(destroy_wrapper wrapper, Args&&... args)
-          : control_block_base{ wrapper }
+        explicit control_block_with_storage(destroy_wrapper&& wrapper, Args&&... args)
+          : control_block_base{ 1u, std::move(wrapper) }
           , m_object(std::forward<Args>(args)...)
         {
         }
@@ -416,19 +416,14 @@ class shared_ptr_base
             return 0;
     }
 
-    /**
-     * @brief %make_shared is a utility function that accepts constructor
-     * args and perfoms a single heap memory allocation for both the managed resource
-     * and the control block.
-     */
     template<typename... Args>
-    friend shared_ptr_base<T> // Single-object version
-    make_shared(Args&&... args)
+    shared_ptr_base(Args&&... args)
     {
         /* Perform a single heap memory allocation */
         control_block_with_storage* cb = new control_block_with_storage(
           destroy_wrapper(std::default_delete<T>()), (std::forward<Args>(args))...);
-        return shared_ptr_base<T>(cb->get(), cb);
+        m_raw_underlying_ptr = cb->get();
+        m_control_block_ptr = cb;
     }
 
     void reset_base(T* ptr, destroy_wrapper&& wrapper)
@@ -489,6 +484,12 @@ class shared_ptr : public shared_ptr_base<T>
         std::cout << "\n" << "shared_ptr::shared_ptr(T*)";
     }
 
+    template<typename... Args>
+    explicit shared_ptr(Args... args)
+      : shared_ptr_base<T>(std::forward<Args>(args)...)
+    {
+    }
+
     /**
      * @brief Replaces the managed object.
      */
@@ -537,6 +538,12 @@ class shared_ptr<T[]> : public shared_ptr_base<T>
         std::cout << "\n" << "shared_ptr::shared_ptr(T*,Deleter)";
     }
 
+    template<typename... Args>
+    explicit shared_ptr(Args... args)
+      : shared_ptr_base<T[]>(std::forward<Args>(args)...)
+    {
+    }
+
     /**
      * @brief Replaces the managed object.
      */
@@ -547,4 +554,26 @@ class shared_ptr<T[]> : public shared_ptr_base<T>
 
     T& operator[](int n) { return shared_ptr_base<T>::m_raw_underlying_ptr[n]; }
 };
+
+/**
+ * @brief %make_shared is a utility function that accepts constructor
+ * args and perfoms a single heap memory allocation for both the managed resource
+ * and the control block.
+ */
+template<typename T, typename... Args>
+shared_ptr<T> // Single-object version
+make_shared(Args&&... args)
+{
+    return shared_ptr<T>(std::forward<Args>(args)...);
+}
+
+/**
+ * @brief %make_shared array version
+ */
+// template<typename T, typename... Args>
+// shared_ptr<T[]> // Array version
+// make_shared<T[]>(Args&&... args)
+//{
+//     return shared_ptr<T[]>(std::forward<Args>(args)...);
+// }
 } // namespace dev
