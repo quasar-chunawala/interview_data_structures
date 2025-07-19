@@ -117,8 +117,6 @@ class shared_ptr_base
             return m_ref_count.load();
         }
 
-        // destroy_wrapper get_deleter() { return m_destroy_wrapper; }
-
         virtual void release_shared(T*) = 0;
         virtual ~control_block_base() {}
     };
@@ -140,19 +138,17 @@ class shared_ptr_base
         explicit control_block(destroy_wrapper&& wrapper)
           : control_block_base(std::move(wrapper))
         {
-            std::cout << "\n" << "control_block::control_block(destroy_wrapper&&)";
         }
 
         void release_shared(T* raw_underlying_ptr) override
         {
-            std::cout << "\n" << "control_block::release_shared()";
             if (--this->m_ref_count == 0) {
                 control_block_base::m_destroy_wrapper(raw_underlying_ptr);
                 delete this;
             }
         }
 
-        ~control_block() { std::cout << "\n" << "control_block::~control_block()"; }
+        ~control_block() {}
     };
 
     /**
@@ -528,6 +524,6 @@ make_shared(Args&&... args)
     return shared_ptr<T>(std::forward<Args>(args)...);
 }
 
-// TODO: Implement the array-version of make_shared<T[]> available since C++20
+// TODO: Implement the array-version of make_shared<T[]>() available since C++20
 
 } // namespace dev
