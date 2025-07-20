@@ -22,10 +22,12 @@ class shared_ptr_base
     {
         template<typename Deleter>
         explicit destroy_wrapper(Deleter&& deleter)
-          : m_destroyer_ptr{ new destroyer<Deleter>(std::forward<Deleter>(deleter)) }
+          : m_destroyer_ptr{ std::make_unique<destroyer<Deleter>>(
+              std::forward<Deleter>(deleter)) }
         {
         }
-
+        // destroy_wrapper is a wrapper over a unique_ptr<destroyer_base>.
+        // It is intended to be move-constructible ONLY.
         destroy_wrapper(destroy_wrapper&& other) noexcept
           : m_destroyer_ptr{ std::exchange(other.m_destroyer_ptr, nullptr) }
         {
@@ -50,9 +52,6 @@ class shared_ptr_base
               , m_deleter{ deleter }
             {
             }
-
-            // destroy_wrapper is a wrapper over a unique_ptr<destroyer_base>.
-            // It is intended to be ONLY move-constructible.
 
             void operator()(pointer ptr) override { m_deleter(ptr); }
 
@@ -271,13 +270,16 @@ class shared_ptr_base
     /**
      * @brief Swaps two shared-pointer objects member-by-member.
      */
-    void swap(shared_ptr_base& other)
+    void swap(shared_ptr_base& other) noexcept
     {
         std::swap(m_raw_underlying_ptr, other.m_raw_underlying_ptr);
         std::swap(m_control_block_ptr, other.m_control_block_ptr);
     }
 
-    friend void swap(shared_ptr_base& lhs, shared_ptr_base& rhs) { lhs.swap(rhs); }
+    friend void swap(shared_ptr_base& lhs, shared_ptr_base& rhs) noexcept
+    {
+        lhs.swap(rhs);
+    }
 
     /**
      * @brief Copy assignment operator. Release the currently held resource
